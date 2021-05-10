@@ -2,11 +2,18 @@
   "name": "cse3000_research_project",
   "version": "1.0.0",
   "description": "Measuring the accessibility of popular websites while using anonymity networks",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "tsc": "tsc"
+    "tsc": "tsc",
+    "build": "tsc"
   },
+  "files": [
+    "bin",
+    "dist",
+    "package.json"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/francinebiazin/CSE3000-research-project.git"
@@ -19,7 +26,7 @@
   "homepage": "https://github.com/francinebiazin/CSE3000-research-project#readme",
   "devDependencies": {
     "@types/puppeteer": "^5.4.3",
-    "puppeteer": "^9.1.1",
+    "puppeteer": "^5.5.0",
     "puppeteer-extra": "^3.1.18",
     "puppeteer-extra-plugin-stealth": "^2.7.8",
     "ts-node": "^9.1.1",
