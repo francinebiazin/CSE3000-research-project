@@ -1,3 +1,10 @@
+# OS metadata
+.DS_Store
+Thumbs.db
+
+
+# ---------------------------------------------- Python -----------------------------------------------
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -127,3 +134,34 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+# ---------------------------------------------- TypeScript / Node.js -----------------------------------------------
+
+pids
+logs
+results
+tmp
+
+# Build
+public/css/main.css
+
+# Coverage reports
+coverage
+
+# API keys and secrets
+.env
+
+# Dependency directory
+node_modules
+bower_components
+
+# Editors
+.idea
+*.iml
+
+# Ignore built ts files
+dist/**/*
+
+# ignore yarn.lock
+yarn.lock
