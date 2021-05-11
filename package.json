@@ -25,7 +25,10 @@
   },
   "homepage": "https://github.com/francinebiazin/CSE3000-research-project#readme",
   "devDependencies": {
+    "@types/papaparse": "^5.2.5",
     "@types/puppeteer": "^5.4.3",
+    "csv-writer": "^1.6.0",
+    "papaparse": "^5.3.0",
     "puppeteer": "^5.5.0",
     "puppeteer-extra": "^3.1.18",
     "puppeteer-extra-plugin-stealth": "^2.7.8",

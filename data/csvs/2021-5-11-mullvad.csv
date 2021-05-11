@@ -1,0 +1,11 @@
+ID,Time,Request Domain,Response Domain,IP Address,HTTP Status Code,Error
+0,2:30:52,http://google.com,https://www.google.com/?gws_rd=ssl,185.204.1.217,200,none
+1,2:31:0,http://youtube.com,https://consent.youtube.com/m?continue=https%3A%2F%2Fyoutube.com%2F&gl=FI&m=0&pc=yt&uxe=23983172&hl=en&src=1,185.204.1.217,200,none
+2,2:31:8,http://tmall.com,https://www.tmall.com/,185.204.1.217,200,none
+3,2:31:25,http://baidu.com,https://www.baidu.com/,185.204.1.217,200,none
+4,2:31:44,http://qq.com,https://www.qq.com/,185.204.1.217,200,none
+5,2:32:14,http://sohu.com,none,185.204.1.217,0,Navigation timeout of 40000 ms exceeded
+6,2:32:54,http://facebook.com,https://www.facebook.com/,185.204.1.217,200,none
+7,2:33:3,http://taobao.com,https://world.taobao.com/,185.204.1.217,200,none
+8,2:33:19,http://360.cn,https://www.360.cn/,185.204.1.217,200,none
+9,2:33:38,http://jd.com,https://global.jd.com/,185.204.1.217,200,none
