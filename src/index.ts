@@ -34,9 +34,9 @@ for (let i = 0; i < 10; i++) {
 // prepare the csv file writer
 const createCsvWriter = require('csv-writer').createObjectCsvWriter
 // WITH MULLVAD
-// const csvPath = 'data/csvs/' + fullDate + '-mullvad.csv'
+// const csvPath = csvDir + '/' + fullDate + '-mullvad.csv'
 // OPEN
-const csvPath = 'data/csvs/' + fullDate + '-open.csv'
+const csvPath = csvDir + '/' + fullDate + '-open.csv'
 const csvWriter = createCsvWriter({
   path: csvPath,
   header: [
@@ -95,10 +95,7 @@ puppeteer
         // necessary delay to avoid bot detection
         await page.waitForTimeout(5000)
         // take screenshot
-        // WITH MULLVAD
-        // const screenshotPath = 'data/screenshots/' + fullDate + '-mullvad/' + fullDate + '-' + i + '-' + domain.replace('.', 'DOT') + '.png'
-        // OPEN
-        const screenshotPath = 'data/screenshots/' + fullDate + '-open/' + fullDate + '-' + i + '-' + domain.replace('.', 'DOT') + '.png'
+        const screenshotPath = screenshotDir + '/' + fullDate + '-' + i + '-' + domain.replace('.', 'DOT') + '.png'
         await page.screenshot({ path: screenshotPath, fullPage: true })
       } catch (error) {
         data.push({
