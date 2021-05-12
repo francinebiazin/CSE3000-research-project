@@ -11,15 +11,15 @@ const fullDate = year + "-" + month + "-" + date
 
 // create the relevant directories for saving screenshots and csv files
 // WITH MULLVAD
-// const screenshotDir = 'data/screenshots/' + fullDate + '-mullvad'
-// OPEN
-const screenshotDir = 'data/screenshots/' + fullDate + '-open'
-fs.mkdir(screenshotDir, { recursive: true }, (err) => {
-  if (err) throw err
+const screenshotDir = 'data/screenshots/' + fullDate + '-mullvad'
+// CONTROL
+// const screenshotDir = 'data/screenshots/' + fullDate + '-control'
+fs.mkdir(screenshotDir, { recursive: true }, (error) => {
+  if (error) throw error
 })
 const csvDir = 'data/csvs/' + fullDate
-fs.mkdir(csvDir, { recursive: true }, (err) => {
-  if (err) throw err
+fs.mkdir(csvDir, { recursive: true }, (error) => {
+  if (error) throw error
 })
 
 // load the domains
@@ -34,14 +34,14 @@ for (let i = 0; i < 10; i++) {
 // prepare the csv file writer
 const createCsvWriter = require('csv-writer').createObjectCsvWriter
 // WITH MULLVAD
-// const csvPath = csvDir + '/' + fullDate + '-mullvad.csv'
-// OPEN
-const csvPath = csvDir + '/' + fullDate + '-open.csv'
+const csvPath = csvDir + '/' + fullDate + '-mullvad.csv'
+// CONTROL
+// const csvPath = csvDir + '/' + fullDate + '-control.csv'
 const csvWriter = createCsvWriter({
   path: csvPath,
   header: [
     {id: 'id', title: 'ID'},
-    {id: 'time', title: 'Time'},
+    {id: 'time', title: 'Time (ms)'},
     {id: 'ogdomain', title: 'Request Domain'},
     {id: 'resdomain', title: 'Response Domain'},
     {id: 'ip', title: 'IP Address'},
@@ -51,7 +51,7 @@ const csvWriter = createCsvWriter({
 })
 const data: { 
   id: number;
-  time: string;
+  time: bigint;
   ogdomain: string;
   resdomain: string | undefined;
   ip: string | undefined; 
@@ -69,23 +69,19 @@ puppeteer
     // get session IP address
     const response = await page.goto('https://api.ipify.org')
     const ipAddress = await response?.text()
-    await page.waitForTimeout(2000)
+    // await page.waitForTimeout(2000)
     // start crawling domains
     var i = 0
     for (const domain of domains) {
-      // sort out timestamp for request
-      datetime = new Date()
-      const hours = datetime.getHours()
-      const minutes = datetime.getMinutes()
-      const seconds = datetime.getSeconds()
-      const timeStamp = hours + ":" + minutes + ":" + seconds
+      // time request
+      const start = process.hrtime.bigint()
       // get complete domain path
       const complete = 'http://' + domain
       try {
         const domainResponse = await page.goto(complete, { 'timeout': 40000 })
         data.push({
           'id': i, 
-          'time': timeStamp,
+          'time': (process.hrtime.bigint() - start) / BigInt(1e+9),
           'ogdomain': complete,
           'resdomain': domainResponse?.url(),
           'ip': ipAddress, 
@@ -100,7 +96,7 @@ puppeteer
       } catch (error) {
         data.push({
           'id': i, 
-          'time': timeStamp,
+          'time': (process.hrtime.bigint() - start) / BigInt(1e+6),
           'ogdomain': complete,
           'resdomain': 'none',
           'ip': ipAddress, 
@@ -118,4 +114,3 @@ puppeteer
       .then(()=> console.log('The CSV file was written successfully'))
 
   })
-
