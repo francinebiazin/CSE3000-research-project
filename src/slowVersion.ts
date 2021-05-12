@@ -60,24 +60,15 @@ const data: {
   error: string | undefined 
 }[] = []
 
-// using local copy of extension: https://www.i-dont-care-about-cookies.eu
-const pathToExtension = 'extensions/cookies_ext/3.3.0_0'
-
 // start puppeteer
 puppeteer
   .use(StealthPlugin())
   .use(Adblocker({ blockTrackers: true }))
-  .launch({
-    headless: false,
-    args: [
-      `--disable-extensions-except=${pathToExtension}`,
-      `--load-extension=${pathToExtension}`,
-    ],
-  })
+  .launch({ headless: false })
   .then(async browser => {
     // start browser
     const page = await browser.newPage()
-    // await page.setViewport({ width: 1340, height: 700, deviceScaleFactor: 2 })
+    await page.setViewport({ width: 1340, height: 700, deviceScaleFactor: 2 })
     // get session IP address
     const response = await page.goto('https://api.ipify.org')
     const ipAddress = await response?.text()
@@ -89,18 +80,43 @@ puppeteer
       // get complete domain path
       const complete = 'http://' + domain
       try {
-        const domainResponse = await page.goto(complete, { waitUntil: 'domcontentloaded' })
-        // let cookie acceptance extension do its work
-        await page.waitForTimeout(2000)
-        data.push({
-          'id': i, 
-          'time': (process.hrtime.bigint() - start) / BigInt(1e+6),
-          'ogdomain': complete,
-          'resdomain': page.url(),
-          'ip': ipAddress, 
-          'status': domainResponse?.status(), 
-          'error': 'none'
-        })
+        const domainResponse = await page.goto(complete, { 'timeout': 40000 })
+        try {
+          const [response] = await Promise.all([
+            await page.waitForNavigation(),
+            // accept cookies
+            await page.evaluate(_ => {
+              function xcc_contains(selector: string, text: string | RegExp) {
+                  var elements = document.querySelectorAll(selector);
+                  return Array.prototype.filter.call(elements, function(element){
+                      return RegExp(text, "i").test(element.textContent.trim());
+                  });
+              }
+              var _xcc;
+              _xcc = xcc_contains('[id*=cookie] a, [class*=cookie] a, [id*=cookie] button, [class*=cookie] button', '^(Accept all|Accept|I understand|Agree|I Agree|Okay|OK)$');
+              if (_xcc != null && _xcc.length != 0) { _xcc[0].click(); }
+            })
+          ])
+          data.push({
+            'id': i, 
+            'time': (process.hrtime.bigint() - start) / BigInt(1e+6),
+            'ogdomain': complete,
+            'resdomain': response.url(),
+            'ip': ipAddress, 
+            'status': response.status(), 
+            'error': 'none'
+          })
+        } catch (err) {
+          data.push({
+            'id': i, 
+            'time': (process.hrtime.bigint() - start) / BigInt(1e+6),
+            'ogdomain': complete,
+            'resdomain': domainResponse?.url(),
+            'ip': ipAddress, 
+            'status': domainResponse?.status(), 
+            'error': 'none'
+          })
+        }
         // necessary delay to avoid bot detection
         // await page.waitForTimeout(1000)
         // take screenshot
@@ -119,12 +135,6 @@ puppeteer
       }
       i++
     }
-
-    // housekeeping
-    const client = await page.target().createCDPSession();
-    await client.send('Network.clearBrowserCookies');
-    await client.send('Network.clearBrowserCache');
-
     // close browser instance
     await browser.close()
 
