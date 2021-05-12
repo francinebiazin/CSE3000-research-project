@@ -1,5 +1,6 @@
 import puppeteer from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
+import Adblocker from 'puppeteer-extra-plugin-adblocker'
 import * as fs from 'fs'
 import * as papaparse from 'papaparse'
 
@@ -62,6 +63,7 @@ const data: {
 // start puppeteer
 puppeteer
   .use(StealthPlugin())
+  .use(Adblocker({ blockTrackers: true }))
   .launch({ headless: true })
   .then(async browser => {
     // start browser
