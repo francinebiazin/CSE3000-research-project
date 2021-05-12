@@ -68,10 +68,10 @@ puppeteer
   .then(async browser => {
     // start browser
     const page = await browser.newPage()
+    await page.setViewport({ width: 1340, height: 700, deviceScaleFactor: 2 })
     // get session IP address
     const response = await page.goto('https://api.ipify.org')
     const ipAddress = await response?.text()
-    // await page.waitForTimeout(2000)
     // start crawling domains
     var i = 0
     for (const domain of domains) {
@@ -83,7 +83,7 @@ puppeteer
         const domainResponse = await page.goto(complete, { 'timeout': 40000 })
         data.push({
           'id': i, 
-          'time': (process.hrtime.bigint() - start) / BigInt(1e+9),
+          'time': (process.hrtime.bigint() - start) / BigInt(1e+6),
           'ogdomain': complete,
           'resdomain': domainResponse?.url(),
           'ip': ipAddress, 
@@ -91,10 +91,10 @@ puppeteer
           'error': 'none'
         })
         // necessary delay to avoid bot detection
-        await page.waitForTimeout(5000)
+        // await page.waitForTimeout(1000)
         // take screenshot
         const screenshotPath = screenshotDir + '/' + fullDate + '-' + i + '-' + domain.replace('.', 'DOT') + '.png'
-        await page.screenshot({ path: screenshotPath, fullPage: true })
+        await page.screenshot({ path: screenshotPath })
       } catch (error) {
         data.push({
           'id': i, 
