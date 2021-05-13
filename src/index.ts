@@ -14,8 +14,8 @@ const year = datetime.getFullYear()
 const fullDate = year + "-" + month + "-" + date
 
 // contants
-const numberDomains = 50
-const pageLimit = 25
+const numberDomains = 10
+const pageLimit = 6
 const mullvadScreenshotDir = 'data/screenshots/' + fullDate + '-mullvad'
 const controlScreenshotDir = 'data/screenshots/' + fullDate + '-control'
 const csvDir = 'data/csvs/' + fullDate
@@ -113,6 +113,7 @@ async function mullvadCrawler() {
   // set up array of domains for control
   let controlDomains = []
   // get session IP address
+  // await page.waitForTimeout(5000)
   let response = await page.goto('https://api.ipify.org')
   let ipAddress = await response?.text()
 
@@ -130,6 +131,7 @@ async function mullvadCrawler() {
       // set up new page to resume crawling
       page = await (await mullvadBrowser).newPage()
       // get session IP address
+      // await page.waitForTimeout(5000)
       response = await page.goto('https://api.ipify.org')
       ipAddress = await response?.text()
     }
@@ -193,7 +195,8 @@ async function controlCrawler(controlDomains: string[]) {
   // start browser
   let page = await (await controlBrowser).newPage()
   // get session IP address
-  let response = await page.goto('https://api.ipify.org')
+  // await page.waitForTimeout(5000)
+  let response = await page.goto('https://api.ipify.org', { waitUntil: 'domcontentloaded', timeout: 40000 })
   let ipAddress = await response?.text()
 
   // start crawling domains
