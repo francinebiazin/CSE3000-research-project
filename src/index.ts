@@ -14,8 +14,9 @@ const year = datetime.getFullYear()
 const fullDate = year + "-" + month + "-" + date
 
 // contants
-const numberDomains = 10
-const pageLimit = 6
+const numberDomains = 100
+const pageLimit = 20
+const requestRetries = 3
 const mullvadScreenshotDir = 'data/screenshots/' + fullDate + '-mullvad'
 const controlScreenshotDir = 'data/screenshots/' + fullDate + '-control'
 const csvDir = 'data/csvs/' + fullDate
@@ -63,6 +64,7 @@ const mullvadCsvWriter = createCsvWriter({
   header: [
     {id: 'id', title: 'ID'},
     {id: 'time', title: 'Time (ms)'},
+    {id: 'attempts', title: 'Attempts'},
     {id: 'ogdomain', title: 'Request Domain'},
     {id: 'resdomain', title: 'Response Domain'},
     {id: 'ip', title: 'IP Address'},
@@ -75,6 +77,7 @@ const controlCsvWriter = createCsvWriter({
   header: [
     {id: 'id', title: 'ID'},
     {id: 'time', title: 'Time (ms)'},
+    {id: 'attempts', title: 'Attempts'},
     {id: 'ogdomain', title: 'Request Domain'},
     {id: 'resdomain', title: 'Response Domain'},
     {id: 'ip', title: 'IP Address'},
@@ -143,40 +146,57 @@ async function mullvadCrawler() {
     const start = process.hrtime.bigint()
     // get complete domain path
     const completeDomain = 'http://www.' + domain
-    try {
-      const domainResponse = await page.goto(completeDomain, { waitUntil: 'domcontentloaded', timeout: 15000 })
-      // let cookie acceptance extension do its work
-      await page.waitForTimeout(2000)
-      const data = [{
-        'id': mullvadIndex, 
-        'time': (process.hrtime.bigint() - start) / BigInt(1e+6),
-        'ogdomain': completeDomain,
-        'resdomain': page.url(),
-        'ip': ipAddress, 
-        'status': domainResponse?.status(), 
-        'error': 'none'
-      }]
-      await mullvadCsvWriter.writeRecords(data)
-      // necessary delay to avoid bot detection
-      // await page.waitForTimeout(1000)
-      // take screenshot
-      const screenshotPath = mullvadScreenshotDir + '/' + fullDate + '-' + mullvadIndex + '-' + domain + '.png'
-      await page.screenshot({ path: screenshotPath })
-    } catch (error) {
-      const data = [{
-        'id': mullvadIndex, 
-        'time': (process.hrtime.bigint() - start) / BigInt(1e+6),
-        'ogdomain': completeDomain,
-        'resdomain': 'none',
-        'ip': ipAddress, 
-        'status': 0, 
-        'error': error.message
-      }]
-      await mullvadCsvWriter.writeRecords(data)
+    // retry non-2xx requests up to 3 times
+    for (let i = 1; i < requestRetries+1; i++) {
+      try {
+        const domainResponse = await page.goto(completeDomain, { waitUntil: 'domcontentloaded', timeout: 15000 })
+        // let cookie acceptance extension do its work
+        await page.waitForTimeout(2000)
+        const statusCode = domainResponse?.status()
+        const data = [{
+          'id': mullvadIndex, 
+          'time': (process.hrtime.bigint() - start) / BigInt(1e+6),
+          'attempts': i,
+          'ogdomain': completeDomain,
+          'resdomain': page.url(),
+          'ip': ipAddress, 
+          'status': statusCode, 
+          'error': 'none'
+        }]
+        // take screenshot if status code 2xx
+        if (statusCode && statusCode > 199 && statusCode < 300) {
+          await mullvadCsvWriter.writeRecords(data)
+          const screenshotPath = mullvadScreenshotDir + '/' + fullDate + '-' + mullvadIndex + '-' + domain + '.png'
+          await page.screenshot({ path: screenshotPath })
+          break
+        }
+        if (i == requestRetries) {
+          await mullvadCsvWriter.writeRecords(data)
+        }
+        else {
+          await page.waitForTimeout(3000)
+        }
+      } catch (error) {
+        if (i == requestRetries) {
+          const data = [{
+            'id': mullvadIndex, 
+            'time': (process.hrtime.bigint() - start) / BigInt(1e+6),
+            'attempts': i,
+            'ogdomain': completeDomain,
+            'resdomain': 'none',
+            'ip': ipAddress, 
+            'status': 0, 
+            'error': error.message
+          }]
+          await mullvadCsvWriter.writeRecords(data)
+        }
+        else {
+          await page.waitForTimeout(3000)
+        }
+      }
     }
     mullvadIndex++
   }
-
   // close current page
   await page.close()
   // switch to control
@@ -205,36 +225,54 @@ async function controlCrawler(controlDomains: string[]) {
     const start = process.hrtime.bigint()
     // get complete domain path
     const completeDomain = 'http://www.' + domain
-    try {
-      const domainResponse = await page.goto(completeDomain, { waitUntil: 'domcontentloaded', timeout: 15000 })
-      // let cookie acceptance extension do its work
-      await page.waitForTimeout(2000)
-      const data = [{
-        'id': controlIndex, 
-        'time': (process.hrtime.bigint() - start) / BigInt(1e+6),
-        'ogdomain': completeDomain,
-        'resdomain': page.url(),
-        'ip': ipAddress, 
-        'status': domainResponse?.status(), 
-        'error': 'none'
-      }]
-      await controlCsvWriter.writeRecords(data)
-      // necessary delay to avoid bot detection
-      // await page.waitForTimeout(1000)
-      // take screenshot
-      const screenshotPath = controlScreenshotDir + '/' + fullDate + '-' + controlIndex + '-' + domain + '.png'
-      await page.screenshot({ path: screenshotPath })
-    } catch (error) {
-      const data = [{
-        'id': controlIndex, 
-        'time': (process.hrtime.bigint() - start) / BigInt(1e+6),
-        'ogdomain': completeDomain,
-        'resdomain': 'none',
-        'ip': ipAddress, 
-        'status': 0, 
-        'error': error.message
-      }]
-      await controlCsvWriter.writeRecords(data)
+    // retry non-2xx requests up to 3 times
+    for (let i = 1; i < requestRetries+1; i++) {
+      try {
+        const domainResponse = await page.goto(completeDomain, { waitUntil: 'domcontentloaded', timeout: 15000 })
+        // let cookie acceptance extension do its work
+        await page.waitForTimeout(2000)
+        const statusCode = domainResponse?.status()
+        const data = [{
+          'id': controlIndex, 
+          'time': (process.hrtime.bigint() - start) / BigInt(1e+6),
+          'attempts': i,
+          'ogdomain': completeDomain,
+          'resdomain': page.url(),
+          'ip': ipAddress, 
+          'status': statusCode, 
+          'error': 'none'
+        }]
+        // take screenshot if status code 2xx
+        if (statusCode && statusCode > 199 && statusCode < 300) {
+          await controlCsvWriter.writeRecords(data)
+          const screenshotPath = controlScreenshotDir + '/' + fullDate + '-' + controlIndex + '-' + domain + '.png'
+          await page.screenshot({ path: screenshotPath })
+          break
+        }
+        if (i == requestRetries) {
+          await controlCsvWriter.writeRecords(data)
+        }
+        else {
+          await page.waitForTimeout(3000)
+        }
+      } catch (error) {
+        if (i == requestRetries) {
+          const data = [{
+            'id': controlIndex, 
+            'time': (process.hrtime.bigint() - start) / BigInt(1e+6),
+            'attempts': i,
+            'ogdomain': completeDomain,
+            'resdomain': 'none',
+            'ip': ipAddress, 
+            'status': 0, 
+            'error': error.message
+          }]
+          await controlCsvWriter.writeRecords(data)
+        }
+        else {
+          await page.waitForTimeout(3000)
+        }
+      }
     }
     controlIndex++
   }
