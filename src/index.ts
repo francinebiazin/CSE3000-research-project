@@ -15,7 +15,7 @@ const fullDate = year + "-" + month + "-" + date
 
 // contants
 const numberDomains = 100
-const pageLimit = 20
+const pageLimit = 21
 const requestRetries = 3
 const mullvadScreenshotDir = 'data/screenshots/' + fullDate + '-mullvad'
 const controlScreenshotDir = 'data/screenshots/' + fullDate + '-control'
@@ -97,28 +97,21 @@ const mullvadBrowser = addExtra(vanillaPuppeteer)
     args: [
       `--disable-extensions-except=${pathToExtension}`,
       `--load-extension=${pathToExtension}`,
-    ],
-  })
-const controlBrowser = addExtra(vanillaPuppeteer)
-  .use(StealthPlugin())
-  .use(Adblocker({ blockTrackers: true }))
-  .launch({
-    headless: false,
-    args: [
-      `--disable-extensions-except=${pathToExtension}`,
-      `--load-extension=${pathToExtension}`,
+      '--disable-dev-shm-usage',
     ],
   })
 
 // define workflow for Mullvad
 // this is also the function that will control entire script
 async function mullvadCrawler() {
-  // start browser
-  let page = await (await mullvadBrowser).newPage()
+  // start browsers
+  const actualMullvadBrowser = await mullvadBrowser
+  // const actualControlBrowser = await controlBrowser
+  // get page
+  let page = await actualMullvadBrowser.newPage()
   // set up array of domains for control
   let controlDomains = []
   // get session IP address
-  // await page.waitForTimeout(5000)
   let response = await page.goto('https://api.ipify.org')
   let ipAddress = await response?.text()
 
@@ -136,9 +129,9 @@ async function mullvadCrawler() {
       // reset controlDomains
       controlDomains = []
       // set up new page to resume crawling
-      page = await (await mullvadBrowser).newPage()
+      page = await actualMullvadBrowser.newPage()
       // get session IP address
-      // await page.waitForTimeout(5000)
+      await page.waitForTimeout(2000)
       response = await page.goto('https://api.ipify.org')
       ipAddress = await response?.text()
     }
@@ -160,7 +153,7 @@ async function mullvadCrawler() {
           // reset page count
           mullvadPageCount = 0
           // set up new page to resume crawling
-          page = await (await mullvadBrowser).newPage()
+          page = await actualMullvadBrowser.newPage()
         }
         // update page count
         mullvadPageCount++
@@ -180,17 +173,11 @@ async function mullvadCrawler() {
         }]
         // take screenshot if status code 2xx
         if (statusCode && statusCode > 199 && statusCode < 300) {
-          await mullvadCsvWriter.writeRecords(data)
           const screenshotPath = mullvadScreenshotDir + '/' + fullDate + '-' + mullvadIndex + '-' + domain + '.png'
           await page.screenshot({ path: screenshotPath })
-          break
         }
-        if (i == requestRetries) {
-          await mullvadCsvWriter.writeRecords(data)
-        }
-        else {
-          await page.waitForTimeout(3000)
-        }
+        await mullvadCsvWriter.writeRecords(data)
+        break
       } catch (error) {
         if (i == requestRetries) {
           const data = [{
@@ -212,26 +199,43 @@ async function mullvadCrawler() {
     }
     mullvadIndex++
   }
+
   // close current page
   await page.close()
   // switch to control
   await controlCrawler(controlDomains)
-
   // close browser instances
-  await (await controlBrowser).close()
-  await (await mullvadBrowser).close()
+  // await actualControlBrowser.close()
+  await actualMullvadBrowser.close()
+  
 }
 
 
 async function controlCrawler(controlDomains: string[]) {
   // turn off Mullvad VPN
-  await turnOffMullvad()
+  await Promise.all([
+    turnOffMullvad(),
+    delay(2000),
+  ])
 
+  // create browser
+  const controlBrowser = addExtra(vanillaPuppeteer)
+  .use(StealthPlugin())
+  .use(Adblocker({ blockTrackers: true }))
+  .launch({
+    headless: false,
+    args: [
+      `--disable-extensions-except=${pathToExtension}`,
+      `--load-extension=${pathToExtension}`,
+      '--disable-dev-shm-usage',
+    ],
+  })
+  const actualControlBrowser = await controlBrowser
   // start browser
-  let page = await (await controlBrowser).newPage()
+  let page = await actualControlBrowser.newPage()
   // get session IP address
-  // await page.waitForTimeout(5000)
-  let response = await page.goto('https://api.ipify.org', { waitUntil: 'domcontentloaded', timeout: 40000 })
+  await page.waitForTimeout(2000)
+  let response = await page.goto('https://api.ipify.org')
   let ipAddress = await response?.text()
 
   // start crawling domains
@@ -250,10 +254,13 @@ async function controlCrawler(controlDomains: string[]) {
           // reset page count
           controlPageCount = 0
           // set up new page to resume crawling
-          page = await (await controlBrowser).newPage()
+          page = await actualControlBrowser.newPage()
         }
         // update page count
         controlPageCount++
+        if (i > 1) {
+          await page.waitForTimeout(3000)
+        }
         const domainResponse = await page.goto(completeDomain, { waitUntil: 'domcontentloaded', timeout: 15000 })
         // let cookie acceptance extension do its work
         await page.waitForTimeout(2000)
@@ -270,17 +277,11 @@ async function controlCrawler(controlDomains: string[]) {
         }]
         // take screenshot if status code 2xx
         if (statusCode && statusCode > 199 && statusCode < 300) {
-          await controlCsvWriter.writeRecords(data)
           const screenshotPath = controlScreenshotDir + '/' + fullDate + '-' + controlIndex + '-' + domain + '.png'
           await page.screenshot({ path: screenshotPath })
-          break
         }
-        if (i == requestRetries) {
-          await controlCsvWriter.writeRecords(data)
-        }
-        else {
-          await page.waitForTimeout(3000)
-        }
+        await controlCsvWriter.writeRecords(data)
+        break
       } catch (error) {
         if (i == requestRetries) {
           const data = [{
@@ -295,9 +296,6 @@ async function controlCrawler(controlDomains: string[]) {
           }]
           await controlCsvWriter.writeRecords(data)
         }
-        else {
-          await page.waitForTimeout(3000)
-        }
       }
     }
     controlIndex++
@@ -305,7 +303,12 @@ async function controlCrawler(controlDomains: string[]) {
   // close page
   await page.close()
   // turn on Mullvad VPN
-  await turnOnMullvad()
+  await Promise.all([
+    turnOnMullvad(),
+    delay(2000),
+  ])
+  // close browser instances
+  await actualControlBrowser.close()
 }
 
 
@@ -317,7 +320,6 @@ async function turnOffMullvad() {
       return
     }
   })
-  await delay(2000)
 }
 
 async function turnOnMullvad() {
