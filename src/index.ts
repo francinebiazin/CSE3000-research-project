@@ -1,32 +1,53 @@
-import puppeteer from 'puppeteer-extra'
+import vanillaPuppeteer from 'puppeteer'
+import { addExtra } from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 import Adblocker from 'puppeteer-extra-plugin-adblocker'
 import * as fs from 'fs'
 import * as papaparse from 'papaparse'
+import { exec } from 'child_process'
 
-// contants
-const numberDomains = 1000
-
-var datetime = new Date()
+// get date info
+const datetime = new Date()
 const date = datetime.getDate()
 const month = datetime.getMonth() + 1
 const year = datetime.getFullYear()
 const fullDate = year + "-" + month + "-" + date
 
-// create the relevant directories for saving screenshots and csv files
-// WITH MULLVAD
-const screenshotDir = 'data/screenshots/' + fullDate + '-mullvad'
-// CONTROL
-// const screenshotDir = 'data/screenshots/' + fullDate + '-control'
-fs.mkdir(screenshotDir, { recursive: true }, (error) => {
+// contants
+const numberDomains = 50
+const pageLimit = 25
+const mullvadScreenshotDir = 'data/screenshots/' + fullDate + '-mullvad'
+const controlScreenshotDir = 'data/screenshots/' + fullDate + '-control'
+const csvDir = 'data/csvs/' + fullDate
+const mullvadCsvPath = csvDir + '/' + fullDate + '-mullvad.csv'
+const controlCsvPath = csvDir + '/' + fullDate + '-control.csv'
+// using local copy of extension: https://www.i-dont-care-about-cookies.eu
+const pathToExtension = 'extensions/cookies_ext/3.3.0_0'
+
+// Mullvad commands
+const turnOffCommand = 'mullvad disconnect'
+const turnOnCommand = 'mullvad connect'
+
+// variables
+let mullvadIndex = 1
+let controlIndex = 1
+
+// waiting
+const delay = (ms: number | undefined) => new Promise(resolve => setTimeout(resolve, ms))
+
+// make screenshots directories
+fs.mkdir(mullvadScreenshotDir, { recursive: true }, (error) => {
   if (error) throw error
 })
-const csvDir = 'data/csvs/' + fullDate
+fs.mkdir(controlScreenshotDir, { recursive: true }, (error) => {
+  if (error) throw error
+})
+// make CSVs directory
 fs.mkdir(csvDir, { recursive: true }, (error) => {
   if (error) throw error
 })
 
-// load the domains
+// load the domains from Alexa Top 1M list
 const domainsPath = 'domains/top-1m.csv'
 const parser = papaparse.parse(fs.readFileSync(domainsPath, { encoding: 'utf-8' }))
 const domains: string[] = []
@@ -35,14 +56,10 @@ for (let i = 0; i < numberDomains; i++) {
   domains.push(row[1])
 }
 
-// prepare the csv file writer
+// prepare the CSV file writers
 const createCsvWriter = require('csv-writer').createObjectCsvWriter
-// WITH MULLVAD
-const csvPath = csvDir + '/' + fullDate + '-mullvad.csv'
-// CONTROL
-// const csvPath = csvDir + '/' + fullDate + '-control.csv'
-const csvWriter = createCsvWriter({
-  path: csvPath,
+const mullvadCsvWriter = createCsvWriter({
+  path: mullvadCsvPath,
   header: [
     {id: 'id', title: 'ID'},
     {id: 'time', title: 'Time (ms)'},
@@ -53,21 +70,21 @@ const csvWriter = createCsvWriter({
     {id: 'error', title: 'Error'},
   ]
 })
-const data: { 
-  id: number;
-  time: bigint;
-  ogdomain: string;
-  resdomain: string | undefined;
-  ip: string | undefined; 
-  status: number | undefined; 
-  error: string | undefined 
-}[] = []
+const controlCsvWriter = createCsvWriter({
+  path: controlCsvPath,
+  header: [
+    {id: 'id', title: 'ID'},
+    {id: 'time', title: 'Time (ms)'},
+    {id: 'ogdomain', title: 'Request Domain'},
+    {id: 'resdomain', title: 'Response Domain'},
+    {id: 'ip', title: 'IP Address'},
+    {id: 'status', title: 'HTTP Status Code'},
+    {id: 'error', title: 'Error'},
+  ]
+})
 
-// using local copy of extension: https://www.i-dont-care-about-cookies.eu
-const pathToExtension = 'extensions/cookies_ext/3.3.0_0'
-
-// start puppeteer
-puppeteer
+// create browser instances
+const mullvadBrowser = addExtra(vanillaPuppeteer)
   .use(StealthPlugin())
   .use(Adblocker({ blockTrackers: true }))
   .launch({
@@ -77,62 +94,175 @@ puppeteer
       `--load-extension=${pathToExtension}`,
     ],
   })
-  .then(async browser => {
-    // start browser
-    let page = await browser.newPage()
-    // await page.setViewport({ width: 1340, height: 700, deviceScaleFactor: 2 })
-    // get session IP address
-    const response = await page.goto('https://api.ipify.org')
-    const ipAddress = await response?.text()
-    // start crawling domains
-    var i = 0
-    for (const domain of domains) {
-      if (i % 24 == 0) {
-        await page.close()
-        page = await browser.newPage()
-        // await page.setViewport({ width: 1340, height: 700, deviceScaleFactor: 2 })
-      }
-      // time request
-      const start = process.hrtime.bigint()
-      // get complete domain path
-      const completeDomain = 'http://www.' + domain
-      try {
-        const domainResponse = await page.goto(completeDomain, { waitUntil: 'networkidle0', timeout: 15000 })
-        // let cookie acceptance extension do its work
-        await page.waitForTimeout(2000)
-        data.push({
-          'id': i, 
-          'time': (process.hrtime.bigint() - start) / BigInt(1e+6),
-          'ogdomain': completeDomain,
-          'resdomain': page.url(),
-          'ip': ipAddress, 
-          'status': domainResponse?.status(), 
-          'error': 'none'
-        })
-        // necessary delay to avoid bot detection
-        // await page.waitForTimeout(1000)
-        // take screenshot
-        const screenshotPath = screenshotDir + '/' + fullDate + '-' + i + '-' + domain.replace('.', 'DOT') + '.png'
-        await page.screenshot({ path: screenshotPath })
-      } catch (error) {
-        data.push({
-          'id': i, 
-          'time': (process.hrtime.bigint() - start) / BigInt(1e+6),
-          'ogdomain': completeDomain,
-          'resdomain': 'none',
-          'ip': ipAddress, 
-          'status': 0, 
-          'error': error.message
-        })
-      }
-      i++
+const controlBrowser = addExtra(vanillaPuppeteer)
+  .use(StealthPlugin())
+  .use(Adblocker({ blockTrackers: true }))
+  .launch({
+    headless: false,
+    args: [
+      `--disable-extensions-except=${pathToExtension}`,
+      `--load-extension=${pathToExtension}`,
+    ],
+  })
+
+// define workflow for Mullvad
+// this is also the function that will control entire script
+async function mullvadCrawler() {
+  // start browser
+  let page = await (await mullvadBrowser).newPage()
+  // set up array of domains for control
+  let controlDomains = []
+  // get session IP address
+  let response = await page.goto('https://api.ipify.org')
+  let ipAddress = await response?.text()
+
+  // start crawling domains
+  for (const domain of domains) {
+
+    // limit of requests per page reached
+    if (mullvadIndex % pageLimit == 0) {
+      // close current page
+      await page.close()
+      // switch to control
+      await controlCrawler(controlDomains)
+      // reset controlDomains
+      controlDomains = []
+      // set up new page to resume crawling
+      page = await (await mullvadBrowser).newPage()
+      // get session IP address
+      response = await page.goto('https://api.ipify.org')
+      ipAddress = await response?.text()
     }
 
-    // close browser instance
-    await browser.close()
+    // add domain to control list
+    controlDomains.push(domain)
 
-    csvWriter
-      .writeRecords(data)
-      .then(() => console.log('The CSV file was written successfully'))
+    // time request
+    const start = process.hrtime.bigint()
+    // get complete domain path
+    const completeDomain = 'http://www.' + domain
+    try {
+      const domainResponse = await page.goto(completeDomain, { waitUntil: 'domcontentloaded', timeout: 15000 })
+      // let cookie acceptance extension do its work
+      await page.waitForTimeout(2000)
+      const data = [{
+        'id': mullvadIndex, 
+        'time': (process.hrtime.bigint() - start) / BigInt(1e+6),
+        'ogdomain': completeDomain,
+        'resdomain': page.url(),
+        'ip': ipAddress, 
+        'status': domainResponse?.status(), 
+        'error': 'none'
+      }]
+      await mullvadCsvWriter.writeRecords(data)
+      // necessary delay to avoid bot detection
+      // await page.waitForTimeout(1000)
+      // take screenshot
+      const screenshotPath = mullvadScreenshotDir + '/' + fullDate + '-' + mullvadIndex + '-' + domain + '.png'
+      await page.screenshot({ path: screenshotPath })
+    } catch (error) {
+      const data = [{
+        'id': mullvadIndex, 
+        'time': (process.hrtime.bigint() - start) / BigInt(1e+6),
+        'ogdomain': completeDomain,
+        'resdomain': 'none',
+        'ip': ipAddress, 
+        'status': 0, 
+        'error': error.message
+      }]
+      await mullvadCsvWriter.writeRecords(data)
+    }
+    mullvadIndex++
+  }
 
+  // close current page
+  await page.close()
+  // switch to control
+  await controlCrawler(controlDomains)
+
+  // close browser instances
+  await (await controlBrowser).close()
+  await (await mullvadBrowser).close()
+}
+
+
+async function controlCrawler(controlDomains: string[]) {
+  // turn off Mullvad VPN
+  await turnOffMullvad()
+
+  // start browser
+  let page = await (await controlBrowser).newPage()
+  // get session IP address
+  let response = await page.goto('https://api.ipify.org')
+  let ipAddress = await response?.text()
+
+  // start crawling domains
+  for (const domain of controlDomains) {
+    // time request
+    const start = process.hrtime.bigint()
+    // get complete domain path
+    const completeDomain = 'http://www.' + domain
+    try {
+      const domainResponse = await page.goto(completeDomain, { waitUntil: 'domcontentloaded', timeout: 15000 })
+      // let cookie acceptance extension do its work
+      await page.waitForTimeout(2000)
+      const data = [{
+        'id': controlIndex, 
+        'time': (process.hrtime.bigint() - start) / BigInt(1e+6),
+        'ogdomain': completeDomain,
+        'resdomain': page.url(),
+        'ip': ipAddress, 
+        'status': domainResponse?.status(), 
+        'error': 'none'
+      }]
+      await controlCsvWriter.writeRecords(data)
+      // necessary delay to avoid bot detection
+      // await page.waitForTimeout(1000)
+      // take screenshot
+      const screenshotPath = controlScreenshotDir + '/' + fullDate + '-' + controlIndex + '-' + domain + '.png'
+      await page.screenshot({ path: screenshotPath })
+    } catch (error) {
+      const data = [{
+        'id': controlIndex, 
+        'time': (process.hrtime.bigint() - start) / BigInt(1e+6),
+        'ogdomain': completeDomain,
+        'resdomain': 'none',
+        'ip': ipAddress, 
+        'status': 0, 
+        'error': error.message
+      }]
+      await controlCsvWriter.writeRecords(data)
+    }
+    controlIndex++
+  }
+  // close page
+  await page.close()
+  // turn on Mullvad VPN
+  await turnOnMullvad()
+}
+
+
+async function turnOffMullvad() {
+  exec(turnOffCommand, function (err: any, stdout: any, stderr: any) {
+    if (err) {
+      // node couldn't execute the command
+      console.log(err)
+      return
+    }
   })
+  await delay(2000)
+}
+
+async function turnOnMullvad() {
+  exec(turnOnCommand, function (err: any, stdout: any, stderr: any) {
+    if (err) {
+      // node couldn't execute the command
+      console.log(err)
+      return
+    }
+  })
+  await delay(5000)
+}
+
+// begin crawl
+mullvadCrawler()
