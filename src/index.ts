@@ -31,7 +31,9 @@ const turnOnCommand = 'mullvad connect'
 
 // variables
 let mullvadIndex = 1
+let mullvadPageCount = 0
 let controlIndex = 1
+let controlPageCount = 0
 
 // waiting
 const delay = (ms: number | undefined) => new Promise(resolve => setTimeout(resolve, ms))
@@ -123,10 +125,12 @@ async function mullvadCrawler() {
   // start crawling domains
   for (const domain of domains) {
 
-    // limit of requests per page reached
+    // limit of requests per setting reached
     if (mullvadIndex % pageLimit == 0) {
       // close current page
       await page.close()
+      // reset page count
+      mullvadPageCount = 0
       // switch to control
       await controlCrawler(controlDomains)
       // reset controlDomains
@@ -149,6 +153,17 @@ async function mullvadCrawler() {
     // retry non-2xx requests up to 3 times
     for (let i = 1; i < requestRetries+1; i++) {
       try {
+        // limit of requests per page reached
+        if (mullvadPageCount % pageLimit == 0) {
+          // close current page
+          await page.close()
+          // reset page count
+          mullvadPageCount = 0
+          // set up new page to resume crawling
+          page = await (await mullvadBrowser).newPage()
+        }
+        // update page count
+        mullvadPageCount++
         const domainResponse = await page.goto(completeDomain, { waitUntil: 'domcontentloaded', timeout: 15000 })
         // let cookie acceptance extension do its work
         await page.waitForTimeout(2000)
@@ -228,6 +243,17 @@ async function controlCrawler(controlDomains: string[]) {
     // retry non-2xx requests up to 3 times
     for (let i = 1; i < requestRetries+1; i++) {
       try {
+        // limit of requests per page reached
+        if (controlPageCount % pageLimit == 0) {
+          // close current page
+          await page.close()
+          // reset page count
+          controlPageCount = 0
+          // set up new page to resume crawling
+          page = await (await controlBrowser).newPage()
+        }
+        // update page count
+        controlPageCount++
         const domainResponse = await page.goto(completeDomain, { waitUntil: 'domcontentloaded', timeout: 15000 })
         // let cookie acceptance extension do its work
         await page.waitForTimeout(2000)
