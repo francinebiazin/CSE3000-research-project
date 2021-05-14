@@ -15,9 +15,9 @@ const fullDate = year + "-" + month + "-" + date
 
 // create the relevant directories for saving screenshots and csv files
 // WITH MULLVAD
-const screenshotDir = 'data/screenshots/' + fullDate + '-mullvad'
+// const screenshotDir = 'data/screenshots/' + fullDate + '-mullvad'
 // CONTROL
-// const screenshotDir = 'data/screenshots/' + fullDate + '-control'
+const screenshotDir = 'data/screenshots/' + fullDate + '-control'
 fs.mkdir(screenshotDir, { recursive: true }, (error) => {
   if (error) throw error
 })
@@ -38,9 +38,9 @@ for (let i = 0; i < numberDomains; i++) {
 // prepare the csv file writer
 const createCsvWriter = require('csv-writer').createObjectCsvWriter
 // WITH MULLVAD
-const csvPath = csvDir + '/' + fullDate + '-mullvad.csv'
+// const csvPath = csvDir + '/' + fullDate + '-mullvad.csv'
 // CONTROL
-// const csvPath = csvDir + '/' + fullDate + '-control.csv'
+const csvPath = csvDir + '/' + fullDate + '-control.csv'
 const csvWriter = createCsvWriter({
   path: csvPath,
   header: [
@@ -53,15 +53,6 @@ const csvWriter = createCsvWriter({
     {id: 'error', title: 'Error'},
   ]
 })
-const data: { 
-  id: number;
-  time: bigint;
-  ogdomain: string;
-  resdomain: string | undefined;
-  ip: string | undefined; 
-  status: number | undefined; 
-  error: string | undefined 
-}[] = []
 
 // using local copy of extension: https://www.i-dont-care-about-cookies.eu
 const pathToExtension = 'extensions/cookies_ext/3.3.0_0'
@@ -87,7 +78,7 @@ puppeteer
     // start crawling domains
     var i = 0
     for (const domain of domains) {
-      if (i % 24 == 0) {
+      if (i % 21 == 0) {
         await page.close()
         page = await browser.newPage()
         // await page.setViewport({ width: 1340, height: 700, deviceScaleFactor: 2 })
@@ -97,25 +88,27 @@ puppeteer
       // get complete domain path
       const completeDomain = 'http://www.' + domain
       try {
-        const domainResponse = await page.goto(completeDomain, { waitUntil: 'networkidle0', timeout: 15000 })
+        const domainResponse = await page.goto(completeDomain, { waitUntil: 'domcontentloaded', timeout: 15000 })
         // let cookie acceptance extension do its work
         await page.waitForTimeout(2000)
-        data.push({
+        const statusCode = domainResponse?.status()
+        const data = [{
           'id': i, 
           'time': (process.hrtime.bigint() - start) / BigInt(1e+6),
           'ogdomain': completeDomain,
           'resdomain': page.url(),
           'ip': ipAddress, 
-          'status': domainResponse?.status(), 
+          'status': statusCode, 
           'error': 'none'
-        })
-        // necessary delay to avoid bot detection
-        // await page.waitForTimeout(1000)
-        // take screenshot
-        const screenshotPath = screenshotDir + '/' + fullDate + '-' + i + '-' + domain.replace('.', 'DOT') + '.png'
-        await page.screenshot({ path: screenshotPath })
+        }]
+        // take screenshot if status code 2xx
+        if (statusCode && statusCode > 199 && statusCode < 300) {
+          const screenshotPath = screenshotDir + '/' + fullDate + '-' + i + '-' + domain + '.png'
+          await page.screenshot({ path: screenshotPath })
+        }
+        await csvWriter.writeRecords(data)
       } catch (error) {
-        data.push({
+        const data = [{
           'id': i, 
           'time': (process.hrtime.bigint() - start) / BigInt(1e+6),
           'ogdomain': completeDomain,
@@ -123,16 +116,13 @@ puppeteer
           'ip': ipAddress, 
           'status': 0, 
           'error': error.message
-        })
+        }]
+        await csvWriter.writeRecords(data)
       }
       i++
     }
 
     // close browser instance
     await browser.close()
-
-    csvWriter
-      .writeRecords(data)
-      .then(() => console.log('The CSV file was written successfully'))
 
   })
