@@ -20,19 +20,30 @@ def get_data(csv_path):
                     'Error': row['Error']
                 }
     return data_dict
-                
-def analyse_data():
+
+
+def agregate_data():
     mullvad_data = get_data(mullvad_path)
     control_data = get_data(control_path)
 
-    analysis_data = {}
+    diff_data = {}
+    undef_data = {}
 
     for domain, data in mullvad_data.items():
         mullvad_code = data['HTTP Status Code']
         if mullvad_code != '200':
             control_code = control_data[domain]['HTTP Status Code']
             if mullvad_code != control_code:
-                analysis_data[domain] = {
+                diff_data[domain] = {
+                    'Mullvad Response Domain': data['Response Domain'],
+                    'Control Response Domain': control_data[domain]['Response Domain'],
+                    'Mullvad Status Code': mullvad_code,
+                    'Control Status Code': control_code,
+                    'Mullvad Error': data['Error'],
+                    'Control Error': control_data[domain]['Error']
+                }
+            else:
+                undef_data[domain] = {
                     'Mullvad Response Domain': data['Response Domain'],
                     'Control Response Domain': control_data[domain]['Response Domain'],
                     'Mullvad Status Code': mullvad_code,
@@ -41,29 +52,68 @@ def analyse_data():
                     'Control Error': control_data[domain]['Error']
                 }
     
-    return analysis_data
+    return diff_data, undef_data
 
 
-data = analyse_data()
-total = 0
-control_200 = 0
-control_non200 = 0
-mullvad_error = 0
-mullvad_block = 0
-for domain, data in data.items():
-    total += 1
-    if data['Control Status Code'] == '200':
-        control_200 += 1
-    else:
-        control_non200 += 1
-    if data['Mullvad Status Code'] == '0':
-        mullvad_error += 1
-    else:
-        mullvad_block += 1
+def analyse_data():
 
-print("Total differences: {}".format(total))
-print("Control 200: {}".format(control_200))
-print("Control non-200: {}".format(control_non200))
-print("Mullvad errors: {}".format(mullvad_error))
-print("Mullvad HTTP blocks: {}".format(mullvad_block))
+    diff_data, undef_data = agregate_data()
+    
+    # handle different data first
+    diff_errors = {}
+    diff_codes = {}
+    for domain, data in diff_data.items():
+        error = data['Mullvad Error']
+        if 'none' in error:
+            code = data['Mullvad Status Code']
+            if code in diff_codes:
+                diff_codes[code] += 1
+            else:
+                diff_codes[code] = 1
+        elif 'Navigation timeout' in error:
+            if 'Navigation timeout' in diff_errors:
+                diff_errors['Navigation timeout'] += 1
+            else:
+                diff_errors['Navigation timeout'] = 1
+        else:
+            error_name = error.split()[0]
+            if error_name in diff_errors:
+                diff_errors[error_name] += 1
+            else:
+                diff_errors[error_name] = 1
+    
+    # handle undefined data
+    undef_errors = {}
+    undef_codes = {}
+    for domain, data in undef_data.items():
+        error = data['Mullvad Error']
+        if 'none' in error:
+            code = data['Mullvad Status Code']
+            if code in undef_codes:
+                undef_codes[code] += 1
+            else:
+                undef_codes[code] = 1
+        elif 'Navigation timeout' in error:
+            if 'Navigation timeout' in undef_errors:
+                undef_errors['Navigation timeout'] += 1
+            else:
+                undef_errors['Navigation timeout'] = 1
+        else:
+            error_name = error.split()[0]
+            if error_name in undef_errors:
+                undef_errors[error_name] += 1
+            else:
+                undef_errors[error_name] = 1
+            
+
+    return diff_errors, diff_codes, undef_errors, undef_codes
+
+
+diff_errors, diff_codes, undef_errors, undef_codes = analyse_data()
+
+print(diff_errors)
+print("Errors: {}".format(sum(diff_errors.values())/10))
+print(diff_codes)
+print("Status codes: {}".format(sum(diff_codes.values())/10))
+# print(undef_codes)
 
