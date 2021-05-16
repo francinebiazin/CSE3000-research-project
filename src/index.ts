@@ -1,13 +1,11 @@
-import vanillaPuppeteer from 'puppeteer'
-import { addExtra } from 'puppeteer-extra'
+import puppeteer from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 import Adblocker from 'puppeteer-extra-plugin-adblocker'
 import * as fs from 'fs'
 import * as papaparse from 'papaparse'
-import { exec } from 'child_process'
 
 // get date info
-const datetime = new Date()
+let datetime = new Date()
 const date = datetime.getDate()
 const month = datetime.getMonth() + 1
 const year = datetime.getFullYear()
@@ -17,32 +15,29 @@ const fullDate = year + "-" + month + "-" + date
 const numberDomains = 1000
 const pageLimit = 21
 const requestRetries = 3
-const mullvadScreenshotDir = 'data/screenshots/' + fullDate + '-mullvad'
-const controlScreenshotDir = 'data/screenshots/' + fullDate + '-control'
+const timeout = 20000
 const csvDir = 'data/csvs/' + fullDate
-const mullvadCsvPath = csvDir + '/' + fullDate + '-mullvad.csv'
-const controlCsvPath = csvDir + '/' + fullDate + '-control.csv'
+
 // using local copy of extension: https://www.i-dont-care-about-cookies.eu
 const pathToExtension = 'extensions/cookies_ext/3.3.0_0'
 
-// Mullvad commands
-const turnOffCommand = 'mullvad disconnect'
-const turnOnCommand = 'mullvad connect'
+// Mullvad
+const screenshotDir = 'data/screenshots/' + fullDate + '-mullvad'
+const csvPath = csvDir + '/' + fullDate + '-mullvad.csv'
+
+// Control
+// const screenshotDir = 'data/screenshots/' + fullDate + '-control'
+// const csvPath = csvDir + '/' + fullDate + '-control.csv'
 
 // variables
-let mullvadIndex = 1
-let mullvadPageCount = 0
-let controlIndex = 1
-let controlPageCount = 0
+let index = 1
+let pageCount = 0
 
 // waiting
 const delay = (ms: number | undefined) => new Promise(resolve => setTimeout(resolve, ms))
 
-// make screenshots directories
-fs.mkdir(mullvadScreenshotDir, { recursive: true }, (error) => {
-  if (error) throw error
-})
-fs.mkdir(controlScreenshotDir, { recursive: true }, (error) => {
+// make screenshots directory
+fs.mkdir(screenshotDir, { recursive: true }, (error) => {
   if (error) throw error
 })
 // make CSVs directory
@@ -59,26 +54,14 @@ for (let i = 0; i < numberDomains; i++) {
   domains.push(row[1])
 }
 
-// prepare the CSV file writers
+// prepare the CSV file writer
 const createCsvWriter = require('csv-writer').createObjectCsvWriter
-const mullvadCsvWriter = createCsvWriter({
-  path: mullvadCsvPath,
+const csvWriter = createCsvWriter({
+  path: csvPath,
   header: [
     {id: 'id', title: 'ID'},
-    {id: 'time', title: 'Time (ms)'},
-    {id: 'attempts', title: 'Attempts'},
-    {id: 'ogdomain', title: 'Request Domain'},
-    {id: 'resdomain', title: 'Response Domain'},
-    {id: 'ip', title: 'IP Address'},
-    {id: 'status', title: 'HTTP Status Code'},
-    {id: 'error', title: 'Error'},
-  ]
-})
-const controlCsvWriter = createCsvWriter({
-  path: controlCsvPath,
-  header: [
-    {id: 'id', title: 'ID'},
-    {id: 'time', title: 'Time (ms)'},
+    {id: 'time', title: 'Time'},
+    {id: 'duration', title: 'Duration (ms)'},
     {id: 'attempts', title: 'Attempts'},
     {id: 'ogdomain', title: 'Request Domain'},
     {id: 'resdomain', title: 'Response Domain'},
@@ -88,8 +71,8 @@ const controlCsvWriter = createCsvWriter({
   ]
 })
 
-// create browser instances
-const mullvadBrowser = addExtra(vanillaPuppeteer)
+// start puppeteer
+puppeteer
   .use(StealthPlugin())
   .use(Adblocker({ blockTrackers: true }))
   .launch({
@@ -97,260 +80,100 @@ const mullvadBrowser = addExtra(vanillaPuppeteer)
     args: [
       `--disable-extensions-except=${pathToExtension}`,
       `--load-extension=${pathToExtension}`,
-      '--disable-dev-shm-usage',
+      '--ignore-certificate-errors',
     ],
   })
-
-// define workflow for Mullvad
-// this is also the function that will control entire script
-async function mullvadCrawler() {
-  // start browsers
-  const actualMullvadBrowser = await mullvadBrowser
-  // const actualControlBrowser = await controlBrowser
-  // get page
-  let page = await actualMullvadBrowser.newPage()
-  // set up array of domains for control
-  let controlDomains = []
-  // get session IP address
-  let response = await page.goto('https://api.ipify.org')
-  let ipAddress = await response?.text()
-
-  // start crawling domains
-  for (const domain of domains) {
-
-    // limit of requests per setting reached
-    if (mullvadIndex % pageLimit == 0) {
-      // close current page
-      await page.close()
-      // reset page count
-      mullvadPageCount = 0
-      // switch to control
-      await controlCrawler(controlDomains)
-      // reset controlDomains
-      controlDomains = []
-      // set up new page to resume crawling
-      page = await actualMullvadBrowser.newPage()
-      // get session IP address
-      await page.waitForTimeout(2000)
-      for (let i = 0; i < requestRetries; i++) {
+  .then(async browser => {
+    // start browser
+    let page = await browser.newPage()
+    // await page.setViewport({ width: 1340, height: 700, deviceScaleFactor: 2 })
+    // get session IP address
+    const response = await page.goto('https://api.ipify.org')
+    const ipAddress = await response?.text()
+    // start crawling domains
+    for (const domain of domains) {
+      if (pageCount % pageLimit == 0) {
+        await page.close()
+        page = await browser.newPage()
+        // await page.setViewport({ width: 1340, height: 700, deviceScaleFactor: 2 })
+      }
+      // time request
+      const start = process.hrtime.bigint()
+      // get complete domain path
+      const completeDomain = 'http://' + domain
+      // retry non-2xx requests up to 3 times
+      for (let i = 1; i < requestRetries+1; i++) {
         try {
-          response = await page.goto('https://api.ipify.org')
-          ipAddress = await response?.text()
+          // limit of requests per page reached
+          if (pageCount % pageLimit == 0) {
+            // close current page
+            await page.close()
+            // reset page count
+            pageCount = 0
+            // set up new page to resume crawling
+            page = await browser.newPage()
+          }
+          // update page count
+          pageCount++
+          const domainResponse = await page.goto(completeDomain, { waitUntil: 'domcontentloaded', timeout: timeout })
+          // let cookie acceptance extension do its work
+          await page.waitForTimeout(2000)
+          // sort out timestamp for request
+          datetime = new Date()
+          const hours = datetime.getHours()
+          const minutes = datetime.getMinutes()
+          const seconds = datetime.getSeconds()
+          const timeStamp = hours + ":" + minutes + ":" + seconds
+          const statusCode = domainResponse?.status()
+          const data = [{
+            'id': index,
+            'time': timeStamp,
+            'duration': (process.hrtime.bigint() - start) / BigInt(1e+6),
+            'attempts': i,
+            'ogdomain': completeDomain,
+            'resdomain': page.url(),
+            'ip': ipAddress, 
+            'status': statusCode, 
+            'error': 'none'
+          }]
+          // take screenshot if status code 2xx
+          if (statusCode && statusCode > 199 && statusCode < 300) {
+            const screenshotPath = screenshotDir + '/' + fullDate + '-' + index + '-' + domain + '.png'
+            await page.screenshot({ path: screenshotPath })
+          }
+          await csvWriter.writeRecords(data)
           break
-        }
-        catch (error) {
-          await page.waitForTimeout(4000)
-        }
-      }
-      
-    }
-
-    // add domain to control list
-    controlDomains.push(domain)
-
-    // time request
-    const start = process.hrtime.bigint()
-    // get complete domain path
-    const completeDomain = 'http://www.' + domain
-    // retry non-2xx requests up to 3 times
-    for (let i = 1; i < requestRetries+1; i++) {
-      try {
-        // limit of requests per page reached
-        if (mullvadPageCount % pageLimit == 0) {
-          // close current page
-          await page.close()
-          // reset page count
-          mullvadPageCount = 0
-          // set up new page to resume crawling
-          page = await actualMullvadBrowser.newPage()
-        }
-        // update page count
-        mullvadPageCount++
-        const domainResponse = await page.goto(completeDomain, { waitUntil: 'domcontentloaded', timeout: 15000 })
-        // let cookie acceptance extension do its work
-        await page.waitForTimeout(2000)
-        const statusCode = domainResponse?.status()
-        const data = [{
-          'id': mullvadIndex, 
-          'time': (process.hrtime.bigint() - start) / BigInt(1e+6),
-          'attempts': i,
-          'ogdomain': completeDomain,
-          'resdomain': page.url(),
-          'ip': ipAddress, 
-          'status': statusCode, 
-          'error': 'none'
-        }]
-        // take screenshot if status code 2xx
-        if (statusCode && statusCode > 199 && statusCode < 300) {
-          const screenshotPath = mullvadScreenshotDir + '/' + fullDate + '-' + mullvadIndex + '-' + domain + '.png'
-          await page.screenshot({ path: screenshotPath })
-        }
-        await mullvadCsvWriter.writeRecords(data)
-        break
-      } catch (error) {
-        if (i == requestRetries) {
-          const data = [{
-            'id': mullvadIndex, 
-            'time': (process.hrtime.bigint() - start) / BigInt(1e+6),
-            'attempts': i,
-            'ogdomain': completeDomain,
-            'resdomain': 'none',
-            'ip': ipAddress, 
-            'status': 0, 
-            'error': error.message
-          }]
-          await mullvadCsvWriter.writeRecords(data)
-        }
-        else {
-          await page.waitForTimeout(3000)
+        } catch (error) {
+          if (i == requestRetries) {
+            // sort out timestamp for request
+            datetime = new Date()
+            const hours = datetime.getHours()
+            const minutes = datetime.getMinutes()
+            const seconds = datetime.getSeconds()
+            const timeStamp = hours + ":" + minutes + ":" + seconds
+            const data = [{
+              'id': index,
+              'time': timeStamp,
+              'duration': (process.hrtime.bigint() - start) / BigInt(1e+6),
+              'attempts': i,
+              'ogdomain': completeDomain,
+              'resdomain': 'none',
+              'ip': ipAddress, 
+              'status': 0, 
+              'error': error.message
+            }]
+            await csvWriter.writeRecords(data)
+          }
+          else {
+            await page.waitForTimeout(5000)
+          }
         }
       }
+      index++
     }
-    mullvadIndex++
-  }
 
-  // close current page
-  await page.close()
-  // switch to control
-  await controlCrawler(controlDomains)
-  // close browser instances
-  // await actualControlBrowser.close()
-  await actualMullvadBrowser.close()
-  
-}
+    // close browser instance
+    await browser.close()
 
-
-async function controlCrawler(controlDomains: string[]) {
-  // turn off Mullvad VPN
-  await Promise.all([
-    turnOffMullvad(),
-    delay(2000),
-  ])
-
-  // create browser
-  const controlBrowser = addExtra(vanillaPuppeteer)
-  .use(StealthPlugin())
-  .use(Adblocker({ blockTrackers: true }))
-  .launch({
-    headless: false,
-    args: [
-      `--disable-extensions-except=${pathToExtension}`,
-      `--load-extension=${pathToExtension}`,
-      '--disable-dev-shm-usage',
-    ],
   })
-  const actualControlBrowser = await controlBrowser
-  // start browser
-  let page = await actualControlBrowser.newPage()
-  // get session IP address
-  await page.waitForTimeout(2000)
-  let response
-  let ipAddress
-  for (let i = 0; i < requestRetries; i++) {
-    try {
-      response = await page.goto('https://api.ipify.org')
-      ipAddress = await response?.text()
-      break
-    }
-    catch (error) {
-      await page.waitForTimeout(3000)
-    }
-  }
 
-  // start crawling domains
-  for (const domain of controlDomains) {
-    // time request
-    const start = process.hrtime.bigint()
-    // get complete domain path
-    const completeDomain = 'http://www.' + domain
-    // retry non-2xx requests up to 3 times
-    for (let i = 1; i < requestRetries+1; i++) {
-      try {
-        // limit of requests per page reached
-        if (controlPageCount % pageLimit == 0) {
-          // close current page
-          await page.close()
-          // reset page count
-          controlPageCount = 0
-          // set up new page to resume crawling
-          page = await actualControlBrowser.newPage()
-        }
-        // update page count
-        controlPageCount++
-        if (i > 1) {
-          await page.waitForTimeout(3000)
-        }
-        const domainResponse = await page.goto(completeDomain, { waitUntil: 'domcontentloaded', timeout: 15000 })
-        // let cookie acceptance extension do its work
-        await page.waitForTimeout(2000)
-        const statusCode = domainResponse?.status()
-        const data = [{
-          'id': controlIndex, 
-          'time': (process.hrtime.bigint() - start) / BigInt(1e+6),
-          'attempts': i,
-          'ogdomain': completeDomain,
-          'resdomain': page.url(),
-          'ip': ipAddress, 
-          'status': statusCode, 
-          'error': 'none'
-        }]
-        // take screenshot if status code 2xx
-        if (statusCode && statusCode > 199 && statusCode < 300) {
-          const screenshotPath = controlScreenshotDir + '/' + fullDate + '-' + controlIndex + '-' + domain + '.png'
-          await page.screenshot({ path: screenshotPath })
-        }
-        await controlCsvWriter.writeRecords(data)
-        break
-      } catch (error) {
-        if (i == requestRetries) {
-          const data = [{
-            'id': controlIndex, 
-            'time': (process.hrtime.bigint() - start) / BigInt(1e+6),
-            'attempts': i,
-            'ogdomain': completeDomain,
-            'resdomain': 'none',
-            'ip': ipAddress, 
-            'status': 0, 
-            'error': error.message
-          }]
-          await controlCsvWriter.writeRecords(data)
-        }
-      }
-    }
-    controlIndex++
-  }
-  // close page
-  await page.close()
-  // turn on Mullvad VPN
-  await Promise.all([
-    turnOnMullvad(),
-    delay(2000),
-  ])
-  // close browser instances
-  await actualControlBrowser.close()
-}
-
-
-async function turnOffMullvad() {
-  exec(turnOffCommand, function (err: any, stdout: any, stderr: any) {
-    if (err) {
-      // node couldn't execute the command
-      console.log(err)
-      return
-    }
-  })
-}
-
-async function turnOnMullvad() {
-  exec(turnOnCommand, function (err: any, stdout: any, stderr: any) {
-    if (err) {
-      // node couldn't execute the command
-      console.log(err)
-      return
-    }
-  })
-  await delay(5000)
-}
-
-// begin crawl
-mullvadCrawler()
