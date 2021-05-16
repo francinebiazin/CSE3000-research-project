@@ -66,3 +66,4 @@ print("Control 200: {}".format(control_200))
 print("Control non-200: {}".format(control_non200))
 print("Mullvad errors: {}".format(mullvad_error))
 print("Mullvad HTTP blocks: {}".format(mullvad_block))
+
