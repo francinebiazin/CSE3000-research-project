@@ -89,8 +89,18 @@ puppeteer
     let page = await browser.newPage()
     // await page.setViewport({ width: 1340, height: 700, deviceScaleFactor: 2 })
     // get session IP address
-    const response = await page.goto('https://api.ipify.org')
-    const ipAddress = await response?.text()
+    let response
+    let ipAddress
+    for (let i = 0; i < requestRetries; i++) {
+      try {
+        response = await page.goto('https://api.ipify.org')
+        ipAddress = await response?.text()
+        break
+      }
+      catch (error) {
+        await page.waitForTimeout(4000)
+      }
+    }
     // start crawling domains
     for (const domain of domains) {
       if (pageCount % pageLimit == 0) {
