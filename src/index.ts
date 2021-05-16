@@ -68,6 +68,7 @@ const csvWriter = createCsvWriter({
     {id: 'ip', title: 'IP Address'},
     {id: 'status', title: 'HTTP Status Code'},
     {id: 'error', title: 'Error'},
+    {id: 'text', title: 'Text'},
   ]
 })
 
@@ -80,7 +81,7 @@ puppeteer
     args: [
       `--disable-extensions-except=${pathToExtension}`,
       `--load-extension=${pathToExtension}`,
-      '--ignore-certificate-errors',
+      // '--ignore-certificate-errors',
       '--window-size=1200,600',
     ],
   })
@@ -136,6 +137,18 @@ puppeteer
           const seconds = datetime.getSeconds()
           const timeStamp = hours + ":" + minutes + ":" + seconds
           const statusCode = domainResponse?.status()
+          let text: string | undefined = 'none'
+          // take screenshot if status code 2xx
+          if (statusCode && statusCode > 199 && statusCode < 300) {
+            const screenshotPath = screenshotDir + '/' + fullDate + '-' + index + '-' + domain + '.png'
+            await page.screenshot({ path: screenshotPath })
+          }
+          else {
+            text = await domainResponse?.text()
+          }
+          if (!text) {
+            text = 'none'
+          }
           const data = [{
             'id': index,
             'time': timeStamp,
@@ -145,13 +158,9 @@ puppeteer
             'resdomain': page.url(),
             'ip': ipAddress, 
             'status': statusCode, 
-            'error': 'none'
+            'error': 'none',
+            'text': text
           }]
-          // take screenshot if status code 2xx
-          if (statusCode && statusCode > 199 && statusCode < 300) {
-            const screenshotPath = screenshotDir + '/' + fullDate + '-' + index + '-' + domain + '.png'
-            await page.screenshot({ path: screenshotPath })
-          }
           await csvWriter.writeRecords(data)
           break
         } catch (error) {
@@ -171,7 +180,8 @@ puppeteer
               'resdomain': 'none',
               'ip': ipAddress, 
               'status': 0, 
-              'error': error.message
+              'error': error.message,
+              'text': 'none'
             }]
             await csvWriter.writeRecords(data)
           }
