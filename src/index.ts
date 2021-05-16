@@ -34,7 +34,7 @@ let index = 1
 let pageCount = 0
 
 // waiting
-const delay = (ms: number | undefined) => new Promise(resolve => setTimeout(resolve, ms))
+// const delay = (ms: number | undefined) => new Promise(resolve => setTimeout(resolve, ms))
 
 // make screenshots directory
 fs.mkdir(screenshotDir, { recursive: true }, (error) => {
