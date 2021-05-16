@@ -66,6 +66,7 @@ puppeteer
     args: [
       `--disable-extensions-except=${pathToExtension}`,
       `--load-extension=${pathToExtension}`,
+      // '--ignore-certificate-errors',      ?????
     ],
   })
   .then(async browser => {
