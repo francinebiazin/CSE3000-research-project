@@ -81,6 +81,7 @@ puppeteer
       `--disable-extensions-except=${pathToExtension}`,
       `--load-extension=${pathToExtension}`,
       '--ignore-certificate-errors',
+      '--window-size=1200,600',
     ],
   })
   .then(async browser => {
