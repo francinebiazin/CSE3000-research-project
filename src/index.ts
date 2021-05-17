@@ -13,10 +13,12 @@ const fullDate = year + "-" + month + "-" + date
 
 // contants
 const numberDomains = 1000
-const pageLimit = 21
 const requestRetries = 3
 const timeout = 20000
 const csvDir = 'data/csvs/' + fullDate
+
+// variables
+let index = 1
 
 // using local copy of extension: https://www.i-dont-care-about-cookies.eu
 const pathToExtension = 'extensions/cookies_ext/3.3.0_0'
@@ -28,10 +30,6 @@ const csvPath = csvDir + '/' + fullDate + '-mullvad.csv'
 // Control
 // const screenshotDir = 'data/screenshots/' + fullDate + '-control'
 // const csvPath = csvDir + '/' + fullDate + '-control.csv'
-
-// variables
-let index = 1
-let pageCount = 0
 
 // waiting
 // const delay = (ms: number | undefined) => new Promise(resolve => setTimeout(resolve, ms))
@@ -102,13 +100,10 @@ puppeteer
         await page.waitForTimeout(4000)
       }
     }
+    await page.close()
     // start crawling domains
     for (const domain of domains) {
-      if (pageCount % pageLimit == 0) {
-        await page.close()
-        page = await browser.newPage()
-        // await page.setViewport({ width: 1340, height: 700, deviceScaleFactor: 2 })
-      }
+      page = await browser.newPage()
       // time request
       const start = process.hrtime.bigint()
       // get complete domain path
@@ -116,17 +111,6 @@ puppeteer
       // retry non-2xx requests up to 3 times
       for (let i = 1; i < requestRetries+1; i++) {
         try {
-          // limit of requests per page reached
-          if (pageCount % pageLimit == 0) {
-            // close current page
-            await page.close()
-            // reset page count
-            pageCount = 0
-            // set up new page to resume crawling
-            page = await browser.newPage()
-          }
-          // update page count
-          pageCount++
           const domainResponse = await page.goto(completeDomain, { waitUntil: 'domcontentloaded', timeout: timeout })
           // let cookie acceptance extension do its work
           await page.waitForTimeout(2000)
@@ -137,16 +121,21 @@ puppeteer
           const seconds = datetime.getSeconds()
           const timeStamp = hours + ":" + minutes + ":" + seconds
           const statusCode = domainResponse?.status()
-          let text: string | undefined = 'none'
+          let text: string | null = 'none'
           // take screenshot if status code 2xx
           if (statusCode && statusCode > 199 && statusCode < 300) {
             const screenshotPath = screenshotDir + '/' + fullDate + '-' + index + '-' + domain + '.png'
             await page.screenshot({ path: screenshotPath })
           }
+          // get text from non-2xx response
           else {
-            text = await domainResponse?.text()
+            text = await page.$eval('*', el => el.textContent)
           }
-          if (!text) {
+          // delete commas to avoid issues in CSV file
+          if (text) {
+            text.split(',').join('VIRG')
+          }
+          else {
             text = 'none'
           }
           const data = [{
@@ -191,6 +180,7 @@ puppeteer
         }
       }
       index++
+      await page.close()
     }
 
     // close browser instance
