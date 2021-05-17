@@ -21,7 +21,9 @@ const csvDir = 'data/csvs/' + fullDate
 let index = 1
 
 // using local copy of extension: https://www.i-dont-care-about-cookies.eu
-const pathToExtension = 'extensions/cookies_ext/3.3.0_0'
+const cookieExtension = 'extensions/cookies_ext/3.3.0_0'
+// using local copy of extension: https://getadblock.com
+const adblockerExtension = 'extensions/adblock_ext/4.33.0_0'
 
 // Mullvad
 const screenshotDir = 'data/screenshots/' + fullDate + '-mullvad'
@@ -77,8 +79,9 @@ puppeteer
   .launch({
     headless: true,
     args: [
-      `--disable-extensions-except=${pathToExtension}`,
-      `--load-extension=${pathToExtension}`,
+      `--disable-extensions-except=${cookieExtension},${adblockerExtension}`,
+      `--load-extension=${cookieExtension}`,
+      `--load-extension=${adblockerExtension}`,
       // '--ignore-certificate-errors',
       '--window-size=1200,600',
     ],
