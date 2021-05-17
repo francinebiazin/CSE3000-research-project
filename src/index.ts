@@ -75,7 +75,7 @@ puppeteer
   .use(StealthPlugin())
   .use(Adblocker({ blockTrackers: true }))
   .launch({
-    headless: false,
+    headless: true,
     args: [
       `--disable-extensions-except=${pathToExtension}`,
       `--load-extension=${pathToExtension}`,
@@ -128,16 +128,16 @@ puppeteer
             await page.screenshot({ path: screenshotPath })
           }
           // get text from non-2xx response
-          else {
-            text = await page.$eval('*', el => el.textContent)
-          }
-          // delete commas to avoid issues in CSV file
-          if (text) {
-            text.split(',').join('VIRG')
-          }
-          else {
-            text = 'none'
-          }
+          // else {
+          //   text = await page.$eval('*', el => el.textContent)
+          // }
+          // // delete commas to avoid issues in CSV file
+          // if (text) {
+          //   text.split(',').join('VIRG')
+          // }
+          // else {
+          //   text = 'none'
+          // }
           const data = [{
             'id': index,
             'time': timeStamp,
