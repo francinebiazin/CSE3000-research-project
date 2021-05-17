@@ -12,7 +12,7 @@ const year = datetime.getFullYear()
 const fullDate = year + "-" + month + "-" + date
 
 // contants
-const numberDomains = 1000
+const numberDomains = 2000
 const requestRetries = 3
 const timeout = 20000
 const csvDir = 'data/csvs/' + fullDate
@@ -106,6 +106,10 @@ puppeteer
     await page.close()
     // start crawling domains
     for (const domain of domains) {
+      // skip problematic domains
+      if (domain.includes('oeeee.com')) {
+        continue
+      }
       page = await browser.newPage()
       // time request
       const start = process.hrtime.bigint()
