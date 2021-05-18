@@ -12,10 +12,10 @@ const year = datetime.getFullYear()
 const fullDate = year + "-" + month + "-" + date
 
 // contants
-const numberDomains = 100
+const numberDomains = 1000
 const requestRetries = 3
 const timeout = 40000
-const clearoutLimit = 10
+const clearoutLimit = 100
 const csvDir = 'data/csvs/' + fullDate
 
 // variables
