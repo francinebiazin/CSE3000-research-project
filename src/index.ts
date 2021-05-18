@@ -125,7 +125,7 @@ puppeteer
         try {
           const domainResponse = await page.goto(completeDomain, { waitUntil: 'domcontentloaded', timeout: timeout })
           // let cookie acceptance extension do its work
-          // await page.waitForTimeout(2000)
+          await page.waitForTimeout(5000)
           // sort out timestamp for request
           datetime = new Date()
           const hours = datetime.getHours()
