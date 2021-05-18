@@ -77,7 +77,7 @@ puppeteer
   .use(StealthPlugin())
   .use(Adblocker({ blockTrackers: true }))
   .launch({
-    headless: false,
+    headless: true,
     args: [
       `--disable-extensions-except=${cookieExtension},${adblockerExtension}`,
       `--load-extension=${cookieExtension}`,
