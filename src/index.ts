@@ -12,9 +12,10 @@ const year = datetime.getFullYear()
 const fullDate = year + "-" + month + "-" + date
 
 // contants
-const numberDomains = 1000
+const numberDomains = 100
 const requestRetries = 3
 const timeout = 40000
+const clearoutLimit = 10
 const csvDir = 'data/csvs/' + fullDate
 
 // variables
@@ -124,7 +125,7 @@ puppeteer
       for (let i = 1; i < requestRetries+1; i++) {
         try {
           const domainResponse = await page.goto(completeDomain, { waitUntil: 'domcontentloaded', timeout: timeout })
-          // let cookie acceptance extension do its work
+          // let extensions do their work
           await page.waitForTimeout(5000)
           // sort out timestamp for request
           datetime = new Date()
@@ -178,12 +179,12 @@ puppeteer
         }
       }
       index++
-      // clear cache & cookies every 500 requests
-      // if (index % 500 == 0) {
-      //   const client = await page.target().createCDPSession();
-      //   await client.send('Network.clearBrowserCookies');
-      //   await client.send('Network.clearBrowserCache');
-      // }
+      // clear cache & cookies every clearoutLimit requests
+      if (index % clearoutLimit == 0) {
+        const client = await page.target().createCDPSession();
+        await client.send('Network.clearBrowserCookies');
+        await client.send('Network.clearBrowserCache');
+      }
       await page.close()
     }
 
