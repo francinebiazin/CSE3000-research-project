@@ -107,7 +107,7 @@ puppeteer
     // start crawling domains
     for (const domain of domains) {
       // skip problematic domains
-      if (domain.includes('oeeee.com')) {
+      if (domain.includes('oeeee.com') || domain.includes('taleo.net')) {
         continue
       }
       page = await browser.newPage()

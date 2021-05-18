@@ -1,7 +1,7 @@
 import csv
 
-mullvad_path = "data/csvs/2021-05-14/2021-5-14-mullvad.csv"
-control_path = "data/csvs/2021-05-14/2021-5-14-control.csv"
+mullvad_path = "data/csvs/2021-5-17/2021-5-17-mullvad.csv"
+control_path = "data/csvs/2021-5-17/2021-5-17-control.csv"
 
 
 def get_data(csv_path):
@@ -13,7 +13,9 @@ def get_data(csv_path):
             if domain != '':
                 data_dict[domain] = {
                     'ID': row['ID'],
-                    'Time (ms)': row['Time (ms)'],
+                    'Time': row['Time'],
+                    'Duration (ms)': row['Duration (ms)'],
+                    'Attempts': row['Attempts'],
                     'Response Domain': row['Response Domain'],
                     'IP Address': row['IP Address'],
                     'HTTP Status Code': row['HTTP Status Code'],
@@ -29,9 +31,12 @@ def agregate_data():
     diff_data = {}
     undef_data = {}
 
+    non_200 = 0
+
     for domain, data in mullvad_data.items():
         mullvad_code = data['HTTP Status Code']
         if mullvad_code != '200':
+            non_200 += 1
             control_code = control_data[domain]['HTTP Status Code']
             if mullvad_code != control_code:
                 diff_data[domain] = {
@@ -52,12 +57,12 @@ def agregate_data():
                     'Control Error': control_data[domain]['Error']
                 }
     
-    return diff_data, undef_data
+    return non_200, diff_data, undef_data
 
 
 def analyse_data():
 
-    diff_data, undef_data = agregate_data()
+    non_200, diff_data, undef_data = agregate_data()
     
     # handle different data first
     diff_errors = {}
@@ -106,11 +111,11 @@ def analyse_data():
                 undef_errors[error_name] = 1
             
 
-    return diff_errors, diff_codes, undef_errors, undef_codes
+    return non_200, diff_errors, diff_codes, undef_errors, undef_codes
 
+non_200, diff_errors, diff_codes, undef_errors, undef_codes = analyse_data()
 
-diff_errors, diff_codes, undef_errors, undef_codes = analyse_data()
-
+print("Total non-2xx: {}".format(non_200))
 print(diff_errors)
 print("Errors: {}".format(sum(diff_errors.values())/10))
 print(diff_codes)
