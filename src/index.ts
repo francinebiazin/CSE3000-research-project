@@ -12,9 +12,9 @@ const year = datetime.getFullYear()
 const fullDate = year + "-" + month + "-" + date
 
 // contants
-const numberDomains = 2000
+const numberDomains = 1000
 const requestRetries = 3
-const timeout = 20000
+const timeout = 40000
 const csvDir = 'data/csvs/' + fullDate
 
 // variables
@@ -49,9 +49,19 @@ fs.mkdir(csvDir, { recursive: true }, (error) => {
 const domainsPath = 'domains/top-1m.csv'
 const parser = papaparse.parse(fs.readFileSync(domainsPath, { encoding: 'utf-8' }))
 const domains: string[] = []
-for (let i = 0; i < numberDomains; i++) {
+let i = 0
+let added = 0
+while (added < numberDomains) {
   const row : any = parser.data[i]
-  domains.push(row[1])
+  const domain = row[1]
+  // skip problematic domains
+  if (domain.includes('oeeee.com') || domain.includes('taleo.net')) {
+    i++
+    continue
+  }
+  domains.push(domain)
+  i++
+  added++
 }
 
 // prepare the CSV file writer
@@ -68,7 +78,6 @@ const csvWriter = createCsvWriter({
     {id: 'ip', title: 'IP Address'},
     {id: 'status', title: 'HTTP Status Code'},
     {id: 'error', title: 'Error'},
-    {id: 'text', title: 'Text'},
   ]
 })
 
@@ -77,7 +86,7 @@ puppeteer
   .use(StealthPlugin())
   .use(Adblocker({ blockTrackers: true }))
   .launch({
-    headless: true,
+    headless: false,
     args: [
       `--disable-extensions-except=${cookieExtension},${adblockerExtension}`,
       `--load-extension=${cookieExtension}`,
@@ -106,10 +115,6 @@ puppeteer
     await page.close()
     // start crawling domains
     for (const domain of domains) {
-      // skip problematic domains
-      if (domain.includes('oeeee.com') || domain.includes('taleo.net')) {
-        continue
-      }
       page = await browser.newPage()
       // time request
       const start = process.hrtime.bigint()
@@ -120,7 +125,7 @@ puppeteer
         try {
           const domainResponse = await page.goto(completeDomain, { waitUntil: 'domcontentloaded', timeout: timeout })
           // let cookie acceptance extension do its work
-          await page.waitForTimeout(2000)
+          // await page.waitForTimeout(2000)
           // sort out timestamp for request
           datetime = new Date()
           const hours = datetime.getHours()
@@ -128,23 +133,11 @@ puppeteer
           const seconds = datetime.getSeconds()
           const timeStamp = hours + ":" + minutes + ":" + seconds
           const statusCode = domainResponse?.status()
-          let text: string | null = 'none'
           // take screenshot if status code 2xx
           if (statusCode && statusCode > 199 && statusCode < 300) {
             const screenshotPath = screenshotDir + '/' + fullDate + '-' + index + '-' + domain + '.png'
             await page.screenshot({ path: screenshotPath })
           }
-          // get text from non-2xx response
-          // else {
-          //   text = await page.$eval('*', el => el.textContent)
-          // }
-          // // delete commas to avoid issues in CSV file
-          // if (text) {
-          //   text.split(',').join('VIRG')
-          // }
-          // else {
-          //   text = 'none'
-          // }
           const data = [{
             'id': index,
             'time': timeStamp,
@@ -154,8 +147,7 @@ puppeteer
             'resdomain': page.url(),
             'ip': ipAddress, 
             'status': statusCode, 
-            'error': 'none',
-            'text': text
+            'error': 'none'
           }]
           await csvWriter.writeRecords(data)
           break
@@ -176,8 +168,7 @@ puppeteer
               'resdomain': 'none',
               'ip': ipAddress, 
               'status': 0, 
-              'error': error.message,
-              'text': 'none'
+              'error': error.message
             }]
             await csvWriter.writeRecords(data)
           }
@@ -187,6 +178,12 @@ puppeteer
         }
       }
       index++
+      // clear cache & cookies every 500 requests
+      // if (index % 500 == 0) {
+      //   const client = await page.target().createCDPSession();
+      //   await client.send('Network.clearBrowserCookies');
+      //   await client.send('Network.clearBrowserCache');
+      // }
       await page.close()
     }
 
