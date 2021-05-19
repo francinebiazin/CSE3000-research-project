@@ -120,7 +120,7 @@ puppeteer
       // time request
       const start = process.hrtime.bigint()
       // get complete domain path
-      const completeDomain = 'http://' + domain
+      let completeDomain = 'http://' + domain
       // retry non-2xx requests up to 3 times
       for (let i = 1; i < requestRetries+1; i++) {
         try {
@@ -174,6 +174,7 @@ puppeteer
             await csvWriter.writeRecords(data)
           }
           else {
+            completeDomain = 'https://www.' + domain
             await page.waitForTimeout(5000)
           }
         }
