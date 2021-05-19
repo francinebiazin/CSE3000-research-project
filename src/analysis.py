@@ -1,7 +1,8 @@
 import csv
 
-mullvad_path = "data/csvs/2021-5-17/2021-5-17-mullvad.csv"
-control_path = "data/csvs/2021-5-17/2021-5-17-control.csv"
+mullvad_path = "data/csvs/2021-5-19/2021-5-19-mullvad.csv"
+control_path = "data/csvs/2021-5-19/2021-5-19-control-test.csv"
+aggragated_path = "analysis/aggregated/2021-5-19-aggregated.csv"
 
 
 def get_data(csv_path):
@@ -24,40 +25,37 @@ def get_data(csv_path):
     return data_dict
 
 
-def agregate_data():
+def aggregate_data():
     mullvad_data = get_data(mullvad_path)
     control_data = get_data(control_path)
 
-    diff_data = {}
-    undef_data = {}
+    headers = [
+        'ID',
+        'Domain',
+        'Mullvad Response Domain',
+        'Control Response Domain',
+        'Mullvad Status Code',
+        'Control Status Code',
+        'Mullvad Error',
+        'Control Error'
+    ]
 
-    non_200 = 0
+    with open(aggragated_path, 'w') as csv_file:
+        writer = csv.DictWriter(csv_file, headers)
+        writer.writeheader()
 
-    for domain, data in mullvad_data.items():
-        mullvad_code = data['HTTP Status Code']
-        if mullvad_code != '200':
-            non_200 += 1
-            control_code = control_data[domain]['HTTP Status Code']
-            if mullvad_code != control_code:
-                diff_data[domain] = {
-                    'Mullvad Response Domain': data['Response Domain'],
-                    'Control Response Domain': control_data[domain]['Response Domain'],
-                    'Mullvad Status Code': mullvad_code,
-                    'Control Status Code': control_code,
-                    'Mullvad Error': data['Error'],
-                    'Control Error': control_data[domain]['Error']
-                }
-            else:
-                undef_data[domain] = {
-                    'Mullvad Response Domain': data['Response Domain'],
-                    'Control Response Domain': control_data[domain]['Response Domain'],
-                    'Mullvad Status Code': mullvad_code,
-                    'Control Status Code': control_code,
-                    'Mullvad Error': data['Error'],
-                    'Control Error': control_data[domain]['Error']
-                }
-    
-    return non_200, diff_data, undef_data
+        for domain, data in mullvad_data.items():
+            data = {
+                'ID': data['ID'],
+                'Domain': domain,
+                'Mullvad Response Domain': data['Response Domain'],
+                'Control Response Domain': control_data[domain]['Response Domain'],
+                'Mullvad Status Code': data['HTTP Status Code'],
+                'Control Status Code': control_data[domain]['HTTP Status Code'],
+                'Mullvad Error': data['Error'],
+                'Control Error': control_data[domain]['Error']
+            }
+            writer.writerow(data)
 
 
 def analyse_data():
@@ -113,12 +111,13 @@ def analyse_data():
 
     return non_200, diff_errors, diff_codes, undef_errors, undef_codes
 
-non_200, diff_errors, diff_codes, undef_errors, undef_codes = analyse_data()
+# non_200, diff_errors, diff_codes, undef_errors, undef_codes = analyse_data()
 
-print("Total non-2xx: {}".format(non_200))
-print(diff_errors)
-print("Errors: {}".format(sum(diff_errors.values())/10))
-print(diff_codes)
-print("Status codes: {}".format(sum(diff_codes.values())/10))
+# print("Total non-2xx: {}".format(non_200))
+# print(diff_errors)
+# print("Errors: {}".format(sum(diff_errors.values())/10))
+# print(diff_codes)
+# print("Status codes: {}".format(sum(diff_codes.values())/10))
 # print(undef_codes)
 
+aggregate_data()
