@@ -12,7 +12,7 @@ const year = datetime.getFullYear()
 const fullDate = year + "-" + month + "-" + date
 
 // contants
-const numberDomains = 1000
+const numberDomains = 3000
 const requestRetries = 3
 const timeout = 40000
 const clearoutLimit = 100
@@ -120,7 +120,7 @@ puppeteer
       // time request
       const start = process.hrtime.bigint()
       // get complete domain path
-      let completeDomain = 'http://' + domain
+      const completeDomain = 'http://' + domain
       // retry non-2xx requests up to 3 times
       for (let i = 1; i < requestRetries+1; i++) {
         try {
@@ -174,7 +174,6 @@ puppeteer
             await csvWriter.writeRecords(data)
           }
           else {
-            completeDomain = 'https://www.' + domain
             await page.waitForTimeout(5000)
           }
         }
