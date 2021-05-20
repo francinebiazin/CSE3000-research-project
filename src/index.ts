@@ -14,7 +14,7 @@ const fullDate = year + "-" + month + "-" + date
 // contants
 const numberDomains = 3000
 const requestRetries = 3
-const timeout = 40000
+const timeouts = [20000, 30000, 35000, 40000]
 const clearoutLimit = 100
 const csvDir = 'data/csvs/' + fullDate
 
@@ -56,7 +56,7 @@ while (added < numberDomains) {
   const row : any = parser.data[i]
   const domain = row[1]
   // skip problematic domains
-  if (domain.includes('oeeee.com') || domain.includes('taleo.net')) {
+  if (domain.includes('oeeee.com') || domain.includes('taleo.net') || domain.includes('tamin.ir')) {
     i++
     continue
   }
@@ -92,7 +92,6 @@ puppeteer
       `--disable-extensions-except=${cookieExtension},${adblockerExtension}`,
       `--load-extension=${cookieExtension}`,
       `--load-extension=${adblockerExtension}`,
-      // '--ignore-certificate-errors',
       '--window-size=1200,600',
     ],
   })
@@ -124,7 +123,7 @@ puppeteer
       // retry non-2xx requests up to 3 times
       for (let i = 1; i < requestRetries+1; i++) {
         try {
-          const domainResponse = await page.goto(completeDomain, { waitUntil: 'domcontentloaded', timeout: timeout })
+          const domainResponse = await page.goto(completeDomain, { waitUntil: 'domcontentloaded', timeout: timeouts[i] })
           // let extensions do their work
           await page.waitForTimeout(5000)
           // sort out timestamp for request
@@ -185,6 +184,7 @@ puppeteer
         await client.send('Network.clearBrowserCookies');
         await client.send('Network.clearBrowserCache');
       }
+      await page.waitForTimeout(1000)
       await page.close()
     }
 
