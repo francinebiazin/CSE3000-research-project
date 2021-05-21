@@ -20,7 +20,7 @@ const clearoutLimit = 100
 const csvDir = 'data/csvs/' + fullDate
 
 // variables
-let index = 1
+let index = 2485
 
 // using local copy of extension: https://www.i-dont-care-about-cookies.eu
 const cookieExtension = 'extensions/cookies_ext/3.3.0_0'
@@ -57,7 +57,7 @@ while (added < numberDomains) {
   const row : any = parser.data[k]
   const domain = row[1]
   // skip problematic domains
-  if (domain.includes('oeeee.com') || domain.includes('taleo.net') || domain.includes('tamin.ir')) {
+  if (domain.includes('oeeee.com') || domain.includes('taleo.net') || domain.includes('tamin.ir') || domain.includes('support.wix.com')) {
     k++
     continue
   }
