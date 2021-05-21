@@ -9,8 +9,7 @@ control_path = "data/stage3/csvs/{}/{}-control.csv".format(date, date)
 aggragated_path = "analysis/stage3/aggregated/{}-aggregated.csv".format(date)
 mullvad_analysis = "analysis/stage3/individual/mullvad-analysis.csv"
 control_analysis = "analysis/stage3/individual/control-analysis.csv"
-test_analysis = "analysis/stage3/individual/mullvad-analysis-TEST.csv"
-# aggregated_analysis
+phash_path = "analysis/stage3/screenshots/{}-phash.csv".format(date)
 
 
 def get_data(csv_path):
@@ -33,45 +32,54 @@ def get_data(csv_path):
     return data_dict
 
 
-def individual_data(read_data, write_data, connection):
-
-    # get headers
-    headers = []
-    with open(write_data, 'r') as csv_file:
+def get_phash(csv_path):
+    data_dict = {}
+    with open(csv_path, mode='r', newline='') as csv_file:
         csv_reader = csv.DictReader(csv_file)
-        headers = csv_reader.fieldnames
+        for row in csv_reader:
+            image = row['Image']
+            if image != '' and image != '.DS_Store':
+                id = image.split("-")[3]
+                data_dict[id] = {
+                    'Image': image,
+                    'Mullvad Hash': row['Mullvad Hash'],
+                    'Control Hash': row['Control Hash'],
+                    'Difference': row['Difference']
+                }
+    return data_dict
 
-    # add headers to data dict
-    data = {}
-    for header in headers:
-        if header == 'Date':
-            data[header] = date
-        elif header == 'Connection':
-            data[header] = connection
-        else:
-            data[header] = 0
 
-    # add actual data
+def individual_data(read_data, write_data, connection):
+    # initialise data dict
+    data = {
+        'Date': date,
+        'Connection': connection,
+        '2xx': 0,
+        'Non-2xx': 0,
+        'Timeouts': 0,
+        'Errors': 0
+    }
+
+    # add data
     with open(read_data, mode='r', newline='') as csv_file:
         csv_reader = csv.DictReader(csv_file)
         for row in csv_reader:
             code = row['HTTP Status Code']
             error = row['Error']
-            if code:
-                if code in data:
-                    data[code] += 1
-                else:
-                    print(code)
-            if error:
+            if code and int(code) > 199 and int(code) < 300:
+                data['2xx'] += 1
+            elif not code or int(code) > 0:
+                data['Non-2xx'] += 1
+            if error != 'none':
                 error_name = error.split()[0]
-                if error_name in data:
-                    data[error_name] += 1
+                if 'Navigation' in error_name:
+                    data['Timeouts'] += 1
                 else:
-                    print(error_name)
+                    data['Errors'] += 1
     
     # write data
     with open (write_data,'a') as csv_file:                            
-        csv_writer = csv.DictWriter(csv_file, delimiter=',', fieldnames=headers)
+        csv_writer = csv.DictWriter(csv_file, delimiter=',', fieldnames=list(data.keys()))
         csv_writer.writerow(data)
 
 
@@ -79,6 +87,7 @@ def individual_data(read_data, write_data, connection):
 def aggregate_data():
     mullvad_data = get_data(mullvad_path)
     control_data = get_data(control_path)
+    phash_data = get_phash(phash_path)
 
     headers = [
         'ID',
@@ -88,7 +97,8 @@ def aggregate_data():
         'Mullvad Status Code',
         'Control Status Code',
         'Mullvad Error',
-        'Control Error'
+        'Control Error',
+        'PHash Difference',
     ]
 
     with open(aggragated_path, 'w') as csv_file:
@@ -96,6 +106,10 @@ def aggregate_data():
         writer.writeheader()
 
         for id, data in mullvad_data.items():
+            if id in phash_data:
+                phash = phash_data[id]['Difference']
+            else:
+                phash = 'none'
             data = {
                 'ID': id,
                 'Domain': data['Domain'],
@@ -104,69 +118,12 @@ def aggregate_data():
                 'Mullvad Status Code': data['HTTP Status Code'],
                 'Control Status Code': control_data[id]['HTTP Status Code'],
                 'Mullvad Error': data['Error'],
-                'Control Error': control_data[id]['Error']
+                'Control Error': control_data[id]['Error'],
+                'PHash Difference': phash
             }
             writer.writerow(data)
 
 
-# def analyse_data():
-    
-#     # handle different data first
-#     diff_errors = {}
-#     diff_codes = {}
-#     for domain, data in diff_data.items():
-#         error = data['Mullvad Error']
-#         if 'none' in error:
-#             code = data['Mullvad Status Code']
-#             if code in diff_codes:
-#                 diff_codes[code] += 1
-#             else:
-#                 diff_codes[code] = 1
-#         elif 'Navigation timeout' in error:
-#             if 'Navigation timeout' in diff_errors:
-#                 diff_errors['Navigation timeout'] += 1
-#             else:
-#                 diff_errors['Navigation timeout'] = 1
-#         else:
-#             error_name = error.split()[0]
-#             if error_name in diff_errors:
-#                 diff_errors[error_name] += 1
-#             else:
-#                 diff_errors[error_name] = 1
-    
-#     # handle undefined data
-#     undef_errors = {}
-#     undef_codes = {}
-#     for domain, data in undef_data.items():
-#         error = data['Mullvad Error']
-#         if 'none' in error:
-#             code = data['Mullvad Status Code']
-#             if code in undef_codes:
-#                 undef_codes[code] += 1
-#             else:
-#                 undef_codes[code] = 1
-#         elif 'Navigation timeout' in error:
-#             if 'Navigation timeout' in undef_errors:
-#                 undef_errors['Navigation timeout'] += 1
-#             else:
-#                 undef_errors['Navigation timeout'] = 1
-#         else:
-#             error_name = error.split()[0]
-#             if error_name in undef_errors:
-#                 undef_errors[error_name] += 1
-#             else:
-#                 undef_errors[error_name] = 1
-            
-
-#     return non_200, diff_errors, diff_codes, undef_errors, undef_codes
-
-# non_200, diff_errors, diff_codes, undef_errors, undef_codes = analyse_data()
-
-# print("Total non-2xx: {}".format(non_200))
-# print(diff_errors)
-# print("Errors: {}".format(sum(diff_errors.values())/10))
-# print(diff_codes)
-# print("Status codes: {}".format(sum(diff_codes.values())/10))
-# print(undef_codes)
-
-individual_data(control_path, test_analysis, 'Control')
+aggregate_data()
+# individual_data(mullvad_path, mullvad_analysis, 'Mullvad VPN')
+# individual_data(control_path, control_analysis, 'Control')
