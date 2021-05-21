@@ -7,8 +7,9 @@ date = '2021-5-21'
 mullvad_path = "data/stage3/csvs/{}/{}-mullvad.csv".format(date, date)
 control_path = "data/stage3/csvs/{}/{}-control.csv".format(date, date)
 aggragated_path = "analysis/stage3/aggregated/{}-aggregated.csv".format(date)
-mullvad_codes_analysis = "analysis/stage3/individual/mullvad/http-status-codes-mullvad.csv"
-# control_analysis
+mullvad_analysis = "analysis/stage3/individual/mullvad-analysis.csv"
+control_analysis = "analysis/stage3/individual/control-analysis.csv"
+test_analysis = "analysis/stage3/individual/mullvad-analysis-TEST.csv"
 # aggregated_analysis
 
 
@@ -33,30 +34,45 @@ def get_data(csv_path):
 
 
 def individual_data(read_data, write_data, connection):
-    status_codes = {
-        'Date': date,
-        'Connection': connection
-    }
-    errors = {
-        'Date': date,
-        'Connection': connection
-    }
+
+    # get headers
+    headers = []
+    with open(write_data, 'r') as csv_file:
+        csv_reader = csv.DictReader(csv_file)
+        headers = csv_reader.fieldnames
+
+    # add headers to data dict
+    data = {}
+    for header in headers:
+        if header == 'Date':
+            data[header] = date
+        elif header == 'Connection':
+            data[header] = connection
+        else:
+            data[header] = 0
+
+    # add actual data
     with open(read_data, mode='r', newline='') as csv_file:
         csv_reader = csv.DictReader(csv_file)
         for row in csv_reader:
             code = row['HTTP Status Code']
             error = row['Error']
             if code:
-                if code in status_codes:
-                    status_codes[code] += 1
+                if code in data:
+                    data[code] += 1
                 else:
-                    status_codes[code] = 1
+                    print(code)
             if error:
                 error_name = error.split()[0]
-                if error_name in errors:
-                    errors[error_name] += 1
+                if error_name in data:
+                    data[error_name] += 1
                 else:
-                    errors[error_name] = 1
+                    print(error_name)
+    
+    # write data
+    with open (write_data,'a') as csv_file:                            
+        csv_writer = csv.DictWriter(csv_file, delimiter=',', fieldnames=headers)
+        csv_writer.writerow(data)
 
 
 
@@ -153,4 +169,4 @@ def aggregate_data():
 # print("Status codes: {}".format(sum(diff_codes.values())/10))
 # print(undef_codes)
 
-aggregate_data()
+individual_data(control_path, test_analysis, 'Control')

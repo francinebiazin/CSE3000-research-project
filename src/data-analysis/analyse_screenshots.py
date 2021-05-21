@@ -3,11 +3,11 @@ import imagehash
 from os import walk
 import csv
 
+date = '2021-5-21'
 
-mullvad_path = 'data/screenshots/2021-5-19-mullvad'
-control_path = 'data/screenshots/2021-5-19-control-test'
-results_path = 'analysis/screenshots/2021-5-19-phash.csv'
-date = '2021-5-19'
+mullvad_path = 'data/stage3/screenshots/{}-mullvad'.format(date)
+control_path = 'data/stage3/screenshots/{}-control'.format(date)
+results_path = 'analysis/stage3/screenshots/{}-phash.csv'.format(date)
 
 _, _, mullvad_screenshots = next(walk(mullvad_path))
 _, _, control_screenshots = next(walk(control_path))
