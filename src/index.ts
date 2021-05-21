@@ -17,10 +17,10 @@ const browserLimit = 1000
 const requestRetries = 3
 const timeouts = [20000, 30000, 35000, 40000]
 const clearoutLimit = 100
-const csvDir = 'data/csvs/' + fullDate
+const csvDir = 'data/stage3/csvs/' + fullDate
 
 // variables
-let index = 2485
+let index = 1
 
 // using local copy of extension: https://www.i-dont-care-about-cookies.eu
 const cookieExtension = 'extensions/cookies_ext/3.3.0_0'
@@ -28,11 +28,11 @@ const cookieExtension = 'extensions/cookies_ext/3.3.0_0'
 const adblockerExtension = 'extensions/adblock_ext/4.33.0_0'
 
 // Mullvad
-const screenshotDir = 'data/screenshots/' + fullDate + '-mullvad'
+const screenshotDir = 'data/stage3/screenshots/' + fullDate + '-mullvad'
 const csvPath = csvDir + '/' + fullDate + '-mullvad.csv'
 
 // Control
-// const screenshotDir = 'data/screenshots/' + fullDate + '-control'
+// const screenshotDir = 'data/stage3/screenshots/' + fullDate + '-control'
 // const csvPath = csvDir + '/' + fullDate + '-control.csv'
 
 // waiting
