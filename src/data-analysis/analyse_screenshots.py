@@ -26,6 +26,8 @@ def get_phash_values():
         writer.writeheader()
 
         for image in mullvad_screenshots:
+            if '.pgn' not in image:
+                continue
             if image in control_screenshots:
                 mullvad_hash = imagehash.average_hash(Image.open(mullvad_path + '/' + image))
                 control_hash = imagehash.average_hash(Image.open(control_path + '/' + image))

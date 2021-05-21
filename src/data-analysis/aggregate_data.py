@@ -38,7 +38,7 @@ def get_phash(csv_path):
         csv_reader = csv.DictReader(csv_file)
         for row in csv_reader:
             image = row['Image']
-            if image != '' and image != '.DS_Store':
+            if image != '':
                 id = image.split("-")[3]
                 data_dict[id] = {
                     'Image': image,
