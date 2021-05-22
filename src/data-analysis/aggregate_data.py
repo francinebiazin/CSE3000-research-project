@@ -1,7 +1,7 @@
 import csv
 import pandas as pd
 
-date = '2021-5-21'
+date = '2021-5-22'
 
 # paths
 mullvad_path = "data/stage3/csvs/{}/{}-mullvad.csv".format(date, date)
@@ -109,7 +109,7 @@ def aggregate_data():
             if id in phash_data:
                 phash = phash_data[id]['Difference']
             else:
-                phash = 'none'
+                phash = 'NA'
             data = {
                 'ID': id,
                 'Domain': data['Domain'],
@@ -125,5 +125,5 @@ def aggregate_data():
 
 
 aggregate_data()
-# individual_data(mullvad_path, mullvad_analysis, 'Mullvad VPN')
-# individual_data(control_path, control_analysis, 'Control')
+individual_data(mullvad_path, mullvad_analysis, 'Mullvad VPN')
+individual_data(control_path, control_analysis, 'Control')

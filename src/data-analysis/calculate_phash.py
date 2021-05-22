@@ -3,7 +3,7 @@ import imagehash
 from os import walk
 import csv
 
-date = '2021-5-21'
+date = '2021-5-22'
 
 mullvad_path = 'data/stage3/screenshots/{}-mullvad'.format(date)
 control_path = 'data/stage3/screenshots/{}-control'.format(date)
@@ -26,7 +26,7 @@ def get_phash_values():
         writer.writeheader()
 
         for image in mullvad_screenshots:
-            if '.pgn' not in image:
+            if date not in image:
                 continue
             if image in control_screenshots:
                 mullvad_hash = imagehash.average_hash(Image.open(mullvad_path + '/' + image))
