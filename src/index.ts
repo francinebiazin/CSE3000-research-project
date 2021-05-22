@@ -16,7 +16,7 @@ const numberDomains = 3000
 const browserLimit = 1000
 const requestRetries = 3
 const timeouts = [20000, 30000, 35000, 40000]
-const clearoutLimit = 100
+const clearoutLimit = 10
 const csvDir = 'data/stage3/csvs/' + fullDate
 
 // variables
@@ -132,7 +132,7 @@ async function runBrowser() {
         try {
           const domainResponse = await page.goto(completeDomain, { waitUntil: 'domcontentloaded', timeout: timeouts[i] })
           // let extensions do their work
-          await page.waitForTimeout(5000)
+          await page.waitForTimeout(6000)
           // sort out timestamp for request
           datetime = new Date()
           const hours = datetime.getHours()
