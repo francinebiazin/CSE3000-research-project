@@ -16,7 +16,7 @@ const numberDomains = 3000
 const browserLimit = 1000
 const requestRetries = 3
 const timeouts = [20000, 30000, 35000, 40000]
-const clearoutLimit = 10
+const clearoutLimit = 100
 const csvDir = 'data/stage3/csvs/' + fullDate
 
 // variables
