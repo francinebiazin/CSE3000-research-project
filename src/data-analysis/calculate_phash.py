@@ -3,7 +3,7 @@ import imagehash
 from os import walk
 import csv
 
-date = '2021-5-22'
+date = '2021-5-24'
 
 mullvad_path = 'data/stage3/screenshots/{}-mullvad'.format(date)
 control_path = 'data/stage3/screenshots/{}-control'.format(date)
@@ -50,4 +50,3 @@ def get_phash_values():
 
 
 get_phash_values()
-

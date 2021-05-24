@@ -1,7 +1,7 @@
 import csv
 import pandas as pd
 
-date = '2021-5-22'
+date = '2021-5-24'
 
 # paths
 mullvad_path = "data/stage3/csvs/{}/{}-mullvad.csv".format(date, date)

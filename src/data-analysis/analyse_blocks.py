@@ -1,7 +1,7 @@
 import csv
 
 # variables
-date = '2021-5-21'
+date = '2021-5-24'
 phash_threshold = 15
 
 # paths
@@ -88,7 +88,7 @@ def analyse_blocks():
                 # check control
                 # Control: status code is 2xx
                 if control_code > 199 and control_code < 300:
-                    blocked = 'maybe: control status {}'.format(control_code)
+                    blocked = 'yes'
                 # Control: status code is non-2xx
                 elif control_code > 0:
                     blocked = 'no'
@@ -97,10 +97,17 @@ def analyse_blocks():
                 else:
                     # Control: timeout
                     if 'Navigation ' in control_error:
-                        blocked = 'maybe: control timeout'
+                        # Mullvad: timeout
+                        if 'Navigation ' in mullvad_error:
+                            blocked = 'no'
+                            type_block = 'NA'
+                        # Mullvad: error
+                        else:
+                            blocked = 'maybe: control timeout'
                     # Control: error
                     else:
-                        blocked = 'maybe: control {}'.format(control_error.split()[0])
+                        blocked = 'no'
+                        type_block = 'NA'
             # write data
             with open (block_analysis,'a') as csv_file:                            
                 csv_writer = csv.DictWriter(csv_file, delimiter=',', fieldnames=list(headers))
