@@ -2,11 +2,12 @@ import csv
 
 # variables
 date = '2021-5-24'
-phash_threshold = 15
+phash_threshold = 19
 
 # paths
 aggregated_path = 'analysis/stage3/aggregated/{}-aggregated.csv'.format(date)
 block_analysis = 'analysis/stage3/block-analysis/{}-block-analysis.csv'.format(date)
+aggregated_blocks = 'analysis/stage3/individual/aggregated-blocks.csv'
 
 
 # ID,Domain,Mullvad Response Domain,Control Response Domain,Mullvad Status Code,Control Status Code,Mullvad Error,Control Error,PHash Difference
@@ -121,4 +122,45 @@ def analyse_blocks():
                 }
                 csv_writer.writerow(data)
 
+
+def get_aggregated_blocks():
+    # initialise data dict
+    data = {
+        'Date': date,
+        'Manual Check': 0,
+        'Blocked': 0,
+        'Maybe Blocked': 0,
+        'HTTP Blocks': 0,
+        'Timeout Blocks': 0,
+        'Error Blocks': 0
+    }
+    # ID,Domain,PHash Difference,Manual Check,Blocked,Type of Block
+    # add data
+    with open(block_analysis, mode='r', newline='') as csv_file:
+        csv_reader = csv.DictReader(csv_file)
+        for row in csv_reader:
+            manual_check = row['Manual Check']
+            blocked = row['Blocked']
+            type_block = row['Type of Block']
+            if manual_check == 'yes':
+                data['Manual Check'] += 1
+            else:
+                if blocked == 'yes':
+                    data['Blocked'] += 1
+                    if type_block == 'timeout':
+                        data['Timeout Blocks'] += 1
+                    elif 'net::' in type_block:
+                        data['Error Blocks'] += 1
+                    else:
+                        data['HTTP Blocks'] += 1
+                if 'maybe' in blocked:
+                    data['Maybe Blocked'] += 1
+    
+    # write data
+    with open (aggregated_blocks,'a') as csv_file:                            
+        csv_writer = csv.DictWriter(csv_file, delimiter=',', fieldnames=list(data.keys()))
+        csv_writer.writerow(data)
+
+
 analyse_blocks()
+get_aggregated_blocks()

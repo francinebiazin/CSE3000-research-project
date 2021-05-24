@@ -64,13 +64,13 @@ def individual_data(read_data, write_data, connection):
     with open(read_data, mode='r', newline='') as csv_file:
         csv_reader = csv.DictReader(csv_file)
         for row in csv_reader:
-            code = row['HTTP Status Code']
+            code = int(row['HTTP Status Code'])
             error = row['Error']
-            if code and int(code) > 199 and int(code) < 300:
+            if code > 199 and code < 300:
                 data['2xx'] += 1
-            elif not code or int(code) > 0:
+            elif code > 0:
                 data['Non-2xx'] += 1
-            if error != 'none':
+            else:
                 error_name = error.split()[0]
                 if 'Navigation' in error_name:
                     data['Timeouts'] += 1
@@ -81,7 +81,6 @@ def individual_data(read_data, write_data, connection):
     with open (write_data,'a') as csv_file:                            
         csv_writer = csv.DictWriter(csv_file, delimiter=',', fieldnames=list(data.keys()))
         csv_writer.writerow(data)
-
 
 
 def aggregate_data():
