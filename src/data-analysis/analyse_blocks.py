@@ -139,7 +139,10 @@ def get_aggregated_blocks():
         'Maybe Blocked': 0,
         'HTTP Blocks': 0,
         'Timeout Blocks': 0,
-        'Error Blocks': 0
+        'Error Blocks': 0,
+        'Differentiated Content': 0,
+        'Block Page': 0,
+        'Challenge-Response Test': 0
     }
     # ID,Domain,PHash Difference,Manual Check,Blocked,Type of Block
     # add data
@@ -151,17 +154,22 @@ def get_aggregated_blocks():
             type_block = row['Type of Block']
             if manual_check == 'yes':
                 data['Manual Check'] += 1
-            else:
-                if blocked == 'yes':
-                    data['Blocked'] += 1
-                    if type_block == 'timeout':
-                        data['Timeout Blocks'] += 1
-                    elif 'net::' in type_block:
-                        data['Error Blocks'] += 1
-                    else:
-                        data['HTTP Blocks'] += 1
-                if 'maybe' in blocked:
-                    data['Maybe Blocked'] += 1
+            if blocked == 'yes':
+                data['Blocked'] += 1
+                if type_block == 'timeout':
+                    data['Timeout Blocks'] += 1
+                elif 'net::' in type_block:
+                    data['Error Blocks'] += 1
+                elif type_block == 'differentiated content':
+                    data['Differentiated Content'] += 1
+                elif type_block == 'block page':
+                    data['Block Page'] += 1
+                elif type_block == 'challenge-response test':
+                    data['Challenge-Response Test'] += 1
+                else:
+                    data['HTTP Blocks'] += 1
+            if 'maybe' in blocked:
+                data['Maybe Blocked'] += 1
     
     # write data
     with open (aggregated_blocks,'a') as csv_file:                            
@@ -170,4 +178,4 @@ def get_aggregated_blocks():
 
 
 analyse_blocks()
-get_aggregated_blocks()
+# get_aggregated_blocks()
