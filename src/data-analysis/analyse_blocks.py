@@ -1,4 +1,5 @@
 import csv
+from shutil import copy2
 
 # variables
 date = '2021-5-24'
@@ -8,6 +9,8 @@ phash_threshold = 19
 aggregated_path = 'analysis/stage3/aggregated/{}-aggregated.csv'.format(date)
 block_analysis = 'analysis/stage3/block-analysis/{}-block-analysis.csv'.format(date)
 aggregated_blocks = 'analysis/stage3/individual/aggregated-blocks.csv'
+manual_check_path = 'analysis/stage3/manual-checks/'
+mullvad_path = 'data/stage3/screenshots/{}-mullvad'.format(date)
 
 
 # ID,Domain,Mullvad Response Domain,Control Response Domain,Mullvad Status Code,Control Status Code,Mullvad Error,Control Error,PHash Difference
@@ -49,12 +52,16 @@ def analyse_blocks():
                     # manually check phash values larger than threshold
                     if phash > phash_threshold:
                         manual_check = 'yes'
+                        # copy file for manual check
+                        src = mullvad_path + '/{}-{}-{}.png'.format(date, id, domain.split('//')[1])
+                        copy2(src, manual_check_path)
                     else:
                         manual_check = 'no'
                         blocked = 'no'
                 # control does not have screenshot
                 else:
-                    manual_check = 'yes'
+                    manual_check = 'no'
+                    blocked = 'no'
             # Mullvad: status code is non-2xx
             elif mullvad_code > 0:
                 # check control

@@ -1,7 +1,6 @@
 import pandas as pd
-import csv
 
-dates = ['2021-5-21', '2021-5-22', '2021-5-23', '2021-5-24']
+dates = ['2021-5-21', '2021-5-22', '2021-5-23', '2021-5-24', '2021-5-25']
 
 # aggregated_path = 'analysis/stage3/aggregated/{}-aggregated.csv'.format(date)
 mullvad_analysis_path = 'analysis/stage3/individual/mullvad-analysis.csv'
