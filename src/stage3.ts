@@ -12,11 +12,12 @@ const year = datetime.getFullYear()
 const fullDate = year + "-" + month + "-" + date
 
 // contants
-const numberDomains = 1000
+const numberDomains = 3000
+const browserLimit = 1000
 const requestRetries = 3
 const timeouts = [20000, 30000, 35000, 40000]
 const clearoutLimit = 100
-const csvDir = 'data/csvs/' + fullDate
+const csvDir = 'data/stage3/csvs/' + fullDate
 
 // variables
 let index = 1
@@ -27,15 +28,15 @@ const cookieExtension = 'extensions/cookies_ext/3.3.0_0'
 const adblockerExtension = 'extensions/adblock_ext/4.33.0_0'
 
 // Mullvad
-const screenshotDir = 'data/screenshots/' + fullDate + '-mullvad'
+const screenshotDir = 'data/stage3/screenshots/' + fullDate + '-mullvad'
 const csvPath = csvDir + '/' + fullDate + '-mullvad.csv'
 
 // Control
-// const screenshotDir = 'data/screenshots/' + fullDate + '-control'
+// const screenshotDir = 'data/stage3/screenshots/' + fullDate + '-control'
 // const csvPath = csvDir + '/' + fullDate + '-control.csv'
 
 // waiting
-// const delay = (ms: number | undefined) => new Promise(resolve => setTimeout(resolve, ms))
+const delay = (ms: number | undefined) => new Promise(resolve => setTimeout(resolve, ms))
 
 // make screenshots directory
 fs.mkdir(screenshotDir, { recursive: true }, (error) => {
@@ -50,18 +51,18 @@ fs.mkdir(csvDir, { recursive: true }, (error) => {
 const domainsPath = 'domains/top-1m.csv'
 const parser = papaparse.parse(fs.readFileSync(domainsPath, { encoding: 'utf-8' }))
 const domains: string[] = []
-let i = 0
+let k = 0
 let added = 0
 while (added < numberDomains) {
-  const row : any = parser.data[i]
+  const row : any = parser.data[k]
   const domain = row[1]
   // skip problematic domains
-  if (domain.includes('oeeee.com') || domain.includes('taleo.net') || domain.includes('tamin.ir')) {
-    i++
+  if (domain.includes('oeeee.com') || domain.includes('taleo.net') || domain.includes('tamin.ir') || domain.includes('support.wix.com')) {
+    k++
     continue
   }
   domains.push(domain)
-  i++
+  k++
   added++
 }
 
@@ -82,8 +83,10 @@ const csvWriter = createCsvWriter({
   ]
 })
 
-// start puppeteer
-puppeteer
+
+async function runBrowser() {
+  // start puppeteer
+  await puppeteer
   .use(StealthPlugin())
   .use(Adblocker({ blockTrackers: true }))
   .launch({
@@ -98,7 +101,7 @@ puppeteer
   .then(async browser => {
     // start browser
     let page = await browser.newPage()
-    // await page.setViewport({ width: 1340, height: 700, deviceScaleFactor: 2 })
+    page.removeAllListeners('requests')
     // get session IP address
     let response
     let ipAddress
@@ -113,19 +116,23 @@ puppeteer
       }
     }
     await page.close()
+    // figure out start and end index
+    const start = index - 1
+    const end = Math.min(start + browserLimit, numberDomains)
     // start crawling domains
-    for (const domain of domains) {
+    for (let j = start; j < end; j++) {
       page = await browser.newPage()
+      page.removeAllListeners('requests')
       // time request
       const start = process.hrtime.bigint()
       // get complete domain path
-      const completeDomain = 'http://' + domain
+      const completeDomain = 'http://' + domains[j]
       // retry non-2xx requests up to 3 times
       for (let i = 1; i < requestRetries+1; i++) {
         try {
           const domainResponse = await page.goto(completeDomain, { waitUntil: 'domcontentloaded', timeout: timeouts[i] })
           // let extensions do their work
-          await page.waitForTimeout(5000)
+          await page.waitForTimeout(6000)
           // sort out timestamp for request
           datetime = new Date()
           const hours = datetime.getHours()
@@ -135,7 +142,7 @@ puppeteer
           const statusCode = domainResponse?.status()
           // take screenshot if status code 2xx
           if (statusCode && statusCode > 199 && statusCode < 300) {
-            const screenshotPath = screenshotDir + '/' + fullDate + '-' + index + '-' + domain + '.png'
+            const screenshotPath = screenshotDir + '/' + fullDate + '-' + index + '-' + domains[j] + '.png'
             await page.screenshot({ path: screenshotPath })
           }
           const data = [{
@@ -184,7 +191,7 @@ puppeteer
         await client.send('Network.clearBrowserCookies');
         await client.send('Network.clearBrowserCache');
       }
-      await page.waitForTimeout(1000)
+      // await page.waitForTimeout(1000)
       await page.close()
     }
 
@@ -192,4 +199,17 @@ puppeteer
     await browser.close()
 
   })
+}
 
+async function run() {
+  while (index <= numberDomains) {
+    try {
+      await runBrowser()
+    } catch (error) {
+      console.log('Error at request index ' + String(index))
+      await delay(5000)
+    }
+  }
+}
+
+run()
