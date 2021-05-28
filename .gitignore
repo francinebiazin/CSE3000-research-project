@@ -5,6 +5,8 @@ Thumbs.db
 # Project data
 data
 extensions
+analysis
+domains
 
 
 # ---------------------------------------------- Python -----------------------------------------------
