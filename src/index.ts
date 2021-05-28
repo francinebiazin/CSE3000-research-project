@@ -3,6 +3,7 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 import Adblocker from 'puppeteer-extra-plugin-adblocker'
 import * as fs from 'fs'
 import * as papaparse from 'papaparse'
+import { Browser } from 'puppeteer'
 
 // get date info
 let datetime = new Date()
@@ -12,15 +13,16 @@ const year = datetime.getFullYear()
 const fullDate = year + "-" + month + "-" + date
 
 // contants
-const numberDomains = 3000
-const browserLimit = 1000
+const numberDomains = 100
+const browserLimit = 50
 const requestRetries = 3
 const timeouts = [20000, 30000, 35000, 40000]
-const clearoutLimit = 100
-const csvDir = 'data/stage3/csvs/' + fullDate
+const clearoutLimit = 10
+const csvDir = 'data/stage4/csvs/' + fullDate
 
 // variables
 let index = 1
+let domainIndex = 0
 
 // using local copy of extension: https://www.i-dont-care-about-cookies.eu
 const cookieExtension = 'extensions/cookies_ext/3.3.0_0'
@@ -28,11 +30,11 @@ const cookieExtension = 'extensions/cookies_ext/3.3.0_0'
 const adblockerExtension = 'extensions/adblock_ext/4.33.0_0'
 
 // Mullvad
-const screenshotDir = 'data/stage3/screenshots/' + fullDate + '-mullvad'
+const screenshotDir = 'data/stage4/screenshots/' + fullDate + '-mullvad'
 const csvPath = csvDir + '/' + fullDate + '-mullvad.csv'
 
 // Control
-// const screenshotDir = 'data/stage3/screenshots/' + fullDate + '-control'
+// const screenshotDir = 'data/stage4/screenshots/' + fullDate + '-control'
 // const csvPath = csvDir + '/' + fullDate + '-control.csv'
 
 // waiting
@@ -72,11 +74,13 @@ const csvWriter = createCsvWriter({
   path: csvPath,
   header: [
     {id: 'id', title: 'ID'},
+    {id: 'subpage', title: 'Subpage ID'},
     {id: 'time', title: 'Time'},
     {id: 'duration', title: 'Duration (ms)'},
     {id: 'attempts', title: 'Attempts'},
     {id: 'ogdomain', title: 'Request Domain'},
     {id: 'resdomain', title: 'Response Domain'},
+    {id: 'links', title: 'Links Found'},
     {id: 'ip', title: 'IP Address'},
     {id: 'status', title: 'HTTP Status Code'},
     {id: 'error', title: 'Error'},
@@ -127,31 +131,48 @@ async function runBrowser() {
       const start = process.hrtime.bigint()
       // get complete domain path
       const completeDomain = 'http://' + domains[j]
+      // links for subpages
+      let links: string[] = []
       // retry non-2xx requests up to 3 times
       for (let i = 1; i < requestRetries+1; i++) {
         try {
+          // reset links
+          links = []
           const domainResponse = await page.goto(completeDomain, { waitUntil: 'domcontentloaded', timeout: timeouts[i] })
           // let extensions do their work
           await page.waitForTimeout(6000)
+          let statusCode = domainResponse?.status()
+          // check empty response
+          if (typeof statusCode == 'undefined') {
+            // special value so a screenshot will be taken, but we know something was not quite right
+            statusCode = 215
+          }
           // sort out timestamp for request
           datetime = new Date()
           const hours = datetime.getHours()
           const minutes = datetime.getMinutes()
           const seconds = datetime.getSeconds()
           const timeStamp = hours + ":" + minutes + ":" + seconds
-          const statusCode = domainResponse?.status()
           // take screenshot if status code 2xx
-          if (statusCode && statusCode > 199 && statusCode < 300) {
-            const screenshotPath = screenshotDir + '/' + fullDate + '-' + index + '-' + domains[j] + '.png'
+          if (typeof statusCode !== 'undefined' && statusCode > 199 && statusCode < 300) {
+            const screenshotPath = screenshotDir + '/' + fullDate + '-' + index + '-' + domains[j] + '-0.png'
             await page.screenshot({ path: screenshotPath })
+            // get links
+            const hrefs = await page.evaluate(() => 
+              Array.from(document.querySelectorAll("a")).map(anchor => anchor.href)
+            )
+            links = hrefs.filter(link => link.includes(domains[j] + '/') && link != page.url() && link != (page.url() + '/#'))
+            // links.map(link => console.log(link))
           }
           const data = [{
             'id': index,
+            'subpage': 0,
             'time': timeStamp,
             'duration': (process.hrtime.bigint() - start) / BigInt(1e+6),
             'attempts': i,
             'ogdomain': completeDomain,
             'resdomain': page.url(),
+            'links': links.length,
             'ip': ipAddress, 
             'status': statusCode, 
             'error': 'none'
@@ -168,11 +189,13 @@ async function runBrowser() {
             const timeStamp = hours + ":" + minutes + ":" + seconds
             const data = [{
               'id': index,
+              'subpage': 0,
               'time': timeStamp,
               'duration': (process.hrtime.bigint() - start) / BigInt(1e+6),
               'attempts': i,
               'ogdomain': completeDomain,
               'resdomain': 'none',
+              'links': links.length,
               'ip': ipAddress, 
               'status': 0, 
               'error': error.message
@@ -185,6 +208,7 @@ async function runBrowser() {
         }
       }
       index++
+      domainIndex++
       // clear cache & cookies every clearoutLimit requests
       if (index % clearoutLimit == 0) {
         const client = await page.target().createCDPSession();
@@ -193,6 +217,10 @@ async function runBrowser() {
       }
       // await page.waitForTimeout(1000)
       await page.close()
+      // request subpages
+      if (links.length > 0) {
+        await requestSubpages(browser, links, domains[j], ipAddress)
+      }
     }
 
     // close browser instance
@@ -201,8 +229,86 @@ async function runBrowser() {
   })
 }
 
+async function requestSubpages(browser: Browser, subpages: string[], domain: string, ipAddress: string | undefined) {
+  let page = await browser.newPage()
+  page.removeAllListeners('requests')
+  // request 2 subpages
+  for (let j = 0; j < 2; j++) {
+    // time request
+    const start = process.hrtime.bigint()
+    // retry non-2xx requests up to 3 times
+    for (let i = 1; i < requestRetries+1; i++) {
+      try {
+        const domainResponse = await page.goto(subpages[j], { waitUntil: 'domcontentloaded', timeout: timeouts[i] })
+        // let extensions do their work
+        await page.waitForTimeout(6000)
+        let statusCode = domainResponse?.status()
+        // check empty response
+        if (typeof statusCode == 'undefined') {
+          // special value so a screenshot will be taken, but we know something was not quite right
+          statusCode = 215
+        }
+        // sort out timestamp for request
+        datetime = new Date()
+        const hours = datetime.getHours()
+        const minutes = datetime.getMinutes()
+        const seconds = datetime.getSeconds()
+        const timeStamp = hours + ":" + minutes + ":" + seconds
+        // take screenshot if status code 2xx
+        if (typeof statusCode !== 'undefined' && statusCode > 199 && statusCode < 300) {
+          const screenshotPath = screenshotDir + '/' + fullDate + '-' + index + '-' + domain + '-' + (j+1) + '.png'
+          await page.screenshot({ path: screenshotPath })
+        }
+        const data = [{
+          'id': index,
+          'subpage': j + 1,
+          'time': timeStamp,
+          'duration': (process.hrtime.bigint() - start) / BigInt(1e+6),
+          'attempts': i,
+          'ogdomain': subpages[j],
+          'resdomain': page.url(),
+          'links': 0,
+          'ip': ipAddress, 
+          'status': statusCode, 
+          'error': 'none'
+        }]
+        await csvWriter.writeRecords(data)
+        break
+      } catch (error) {
+        if (i == requestRetries) {
+          // sort out timestamp for request
+          datetime = new Date()
+          const hours = datetime.getHours()
+          const minutes = datetime.getMinutes()
+          const seconds = datetime.getSeconds()
+          const timeStamp = hours + ":" + minutes + ":" + seconds
+          const data = [{
+            'id': index,
+            'subpage': j + 1,
+            'time': timeStamp,
+            'duration': (process.hrtime.bigint() - start) / BigInt(1e+6),
+            'attempts': i,
+            'ogdomain': subpages[j],
+            'resdomain': 'none',
+            'links': 0,
+            'ip': ipAddress, 
+            'status': 0, 
+            'error': error.message
+          }]
+          await csvWriter.writeRecords(data)
+        }
+        else {
+          await page.waitForTimeout(3000)
+        }
+      }
+    }
+    index++
+  }
+  await page.close()
+}
+
 async function run() {
-  while (index <= numberDomains) {
+  while (domainIndex < numberDomains) {
     try {
       await runBrowser()
     } catch (error) {
