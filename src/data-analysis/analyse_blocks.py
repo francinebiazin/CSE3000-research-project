@@ -2,7 +2,7 @@ import csv
 from shutil import copy2
 
 # variables
-date = '2021-5-24'
+date = '2021-5-25'
 phash_threshold = 19
 
 # paths
@@ -177,5 +177,5 @@ def get_aggregated_blocks():
         csv_writer.writerow(data)
 
 
-analyse_blocks()
-# get_aggregated_blocks()
+# analyse_blocks()
+get_aggregated_blocks()

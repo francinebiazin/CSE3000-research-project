@@ -1,6 +1,5 @@
 import pandas as pd
-
-dates = ['2021-5-21', '2021-5-22', '2021-5-23', '2021-5-24', '2021-5-25']
+import csv
 
 # aggregated_path = 'analysis/stage3/aggregated/{}-aggregated.csv'.format(date)
 mullvad_analysis_path = 'analysis/stage3/individual/mullvad-analysis.csv'
@@ -53,6 +52,23 @@ def get_block_stats():
     print('HTTP Blocks average: {} (std: {})'.format(blocks_df['HTTP Blocks'].mean()/30, blocks_df['HTTP Blocks'].std()/30))
     print('Timeout Blocks average: {} (std: {})'.format(blocks_df['Timeout Blocks'].mean()/30, blocks_df['Timeout Blocks'].std()/30))
     print('Error Blocks average: {} (std: {})'.format(blocks_df['Error Blocks'].mean()/30, blocks_df['Error Blocks'].std()/30))
+    print('Differentiated Content average: {} (std: {})'.format(blocks_df['Differentiated Content'].mean()/30, blocks_df['Differentiated Content'].std()/30))
+    print('Block Page average: {} (std: {})'.format(blocks_df['Block Page'].mean()/30, blocks_df['Block Page'].std()/30))
+    print('Challenge-Response Test average: {} (std: {})'.format(blocks_df['Challenge-Response Test'].mean()/30, blocks_df['Challenge-Response Test'].std()/30))
+
+    data = {
+        'Date': 'Averages',
+        'Manual Check': "%.2f" % (blocks_df['Manual Check'].mean()/30),
+        'Blocked': "%.2f" % (blocks_df['Blocked'].mean()/30),
+        'Maybe Blocked': "%.2f" % (blocks_df['Maybe Blocked'].mean()/30),
+        'HTTP Blocks': "%.2f" % (blocks_df['HTTP Blocks'].mean()/30),
+        'Timeout Blocks': "%.2f" % (blocks_df['Timeout Blocks'].mean()/30),
+        'Error Blocks': "%.2f" % (blocks_df['Error Blocks'].mean()/30),
+        'Differentiated Content': "%.2f" % (blocks_df['Differentiated Content'].mean()/30),
+        'Block Page': "%.2f" % (blocks_df['Block Page'].mean()/30),
+        'Challenge-Response Test': "%.2f" % (blocks_df['Challenge-Response Test'].mean()/30)
+    }
+
 
 
 get_stats_individual()
