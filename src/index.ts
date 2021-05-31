@@ -48,8 +48,8 @@ fs.mkdir(csvDir, { recursive: true }, (error) => {
   if (error) throw error
 })
 
-// load the domains from Alexa Top 1M list
-const domainsPath = 'domains/top-1m.csv'
+// load the domains from list created from Stage 3 data
+const domainsPath = 'domains/2021-5-22-stage4domains.csv'
 const parser = papaparse.parse(fs.readFileSync(domainsPath, { encoding: 'utf-8' }))
 const domains: string[] = []
 let l = 0
@@ -57,11 +57,6 @@ let added = 0
 while (added < numberDomains) {
   const row : any = parser.data[l]
   const domain = row[1]
-  // skip problematic domains
-  if (domain.includes('oeeee.com') || domain.includes('taleo.net') || domain.includes('tamin.ir') || domain.includes('support.wix.com')) {
-    l++
-    continue
-  }
   domains.push(domain)
   l++
   added++
@@ -154,7 +149,7 @@ async function runBrowser() {
             const hrefs = await page.evaluate(() => 
               Array.from(document.querySelectorAll("a")).map(anchor => anchor.href)
             )
-            links = hrefs.filter(link => (link.includes(domains[j] + '/') && link !== page.url() && link !== (page.url() + '/#')))
+            links = [...new Set(hrefs.filter(link => (link.includes(domains[j] + '/') && link !== page.url() && link !== (page.url() + '/#'))))]
             // links.map(link => console.log(link))
           }
           await saveData(startTime, 0, i, completeDomain, page.url(), links.length, ipAddress, statusCode)

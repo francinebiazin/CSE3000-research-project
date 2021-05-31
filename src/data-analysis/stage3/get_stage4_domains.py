@@ -39,11 +39,7 @@ with open(block_analysis, mode='r', newline='') as csv_file:
                 'Type of Block': row['Type of Block']
             }
 
-added = 0
-
 for i in range(1, 3001):
-    if added >= 1000:
-        break
     if mullvad_data['{}'.format(i)]['HTTP Status Code'] == '200' and block_data['{}'.format(i)]['Blocked'] == 'no':
         with open (stage4_path,'a') as csv_file:                            
             csv_writer = csv.DictWriter(csv_file, delimiter=',', fieldnames=['ID', 'Domain'])
@@ -52,4 +48,3 @@ for i in range(1, 3001):
                 'Domain': block_data['{}'.format(i)]['Domain'].split('//')[1]
             }
             csv_writer.writerow(data)
-        added += 1
