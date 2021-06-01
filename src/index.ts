@@ -17,7 +17,7 @@ const browserLimit = 5
 const requestRetries = 3
 const timeouts = [20000, 30000, 35000, 40000]
 // const clearoutLimit = 10
-const csvDir = 'data/stage4/csvs/test/' + fullDate
+const csvDir = 'data/stage4/csvs/' + fullDate
 
 // variables
 let index = 1
@@ -29,7 +29,7 @@ const cookieExtension = 'extensions/cookies_ext/3.3.0_0'
 const adblockerExtension = 'extensions/adblock_ext/4.33.0_0'
 
 // Mullvad
-const screenshotDir = 'data/stage4/screenshots/test/' + fullDate + '-mullvad'
+const screenshotDir = 'data/stage4/screenshots/' + fullDate + '-mullvad'
 const csvPath = csvDir + '/' + fullDate + '-mullvad.csv'
 
 // Control
