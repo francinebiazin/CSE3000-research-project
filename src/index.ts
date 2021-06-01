@@ -100,6 +100,9 @@ async function runBrowser() {
     // start browser
     let page = await browser.newPage()
     page.removeAllListeners('requests')
+    // keep Chromium from downloading files
+    let client = await page.target().createCDPSession()
+    await client.send('Page.setDownloadBehavior', {behavior: 'deny'})
     // get session IP address
     let response
     let ipAddress
@@ -121,6 +124,9 @@ async function runBrowser() {
     for (let j = start; j < end; j++) {
       page = await browser.newPage()
       page.removeAllListeners('requests')
+      // keep Chromium from downloading files
+      client = await page.target().createCDPSession()
+      await client.send('Page.setDownloadBehavior', {behavior: 'deny'})
       // time request
       const startTime = process.hrtime.bigint()
       // get complete domain path
@@ -152,11 +158,11 @@ async function runBrowser() {
             links = hrefs.filter(link => (link.includes(domains[j] + '/') && link !== page.url() && link !== (page.url() + '/#')))
             // links.map(link => console.log(link))
           }
-          await saveData(startTime, 0, i, completeDomain, page.url(), links.length, ipAddress, statusCode)
+          await saveData(startTime, 0, i, completeDomain, page.url(), links.length, ipAddress, statusCode, 'none')
           break
         } catch (error) {
           if (i == requestRetries) {
-            await saveData(startTime, 0, i, completeDomain, 'none', links.length, ipAddress, 0)
+            await saveData(startTime, 0, i, completeDomain, 'none', links.length, ipAddress, 0, error.message)
           }
           else {
             await page.waitForTimeout(5000)
@@ -188,11 +194,11 @@ async function runBrowser() {
                 const screenshotPath = screenshotDir + '/' + fullDate + '-' + index + '-' + domains[j] + '-' + (k+1) + '.png'
                 await page.screenshot({ path: screenshotPath })
               }
-              await saveData(startTime, k+1, i, links[k], page.url(), 0, ipAddress, statusCode)
+              await saveData(startTime, k+1, i, links[k], page.url(), 0, ipAddress, statusCode, 'none')
               break
             } catch (error) {
               if (i == requestRetries) {
-                await saveData(startTime, k+1, i, links[k], page.url(), 0, ipAddress, 0)
+                await saveData(startTime, k+1, i, links[k], page.url(), 0, ipAddress, 0, error.message)
               }
               else {
                 await page.waitForTimeout(3000)
@@ -203,7 +209,7 @@ async function runBrowser() {
         }
       }
       // clear cache & cookies every clearoutLimit requests
-      const client = await page.target().createCDPSession()
+      client = await page.target().createCDPSession()
       await client.send('Network.clearBrowserCookies')
       await client.send('Network.clearBrowserCache')
       // await page.waitForTimeout(1000)
@@ -217,7 +223,7 @@ async function runBrowser() {
   })
 }
 
-async function saveData(start: bigint, subpageIndex: number, attemptNumber: number, ogDomain: string, resDomain: string, totalLinks: number, ipAddress: string | undefined, statusCode: number) {
+async function saveData(start: bigint, subpageIndex: number, attemptNumber: number, ogDomain: string, resDomain: string, totalLinks: number, ipAddress: string | undefined, statusCode: number, error: string) {
   // sort out timestamp for request
   datetime = new Date()
   const hours = datetime.getHours()
@@ -235,7 +241,7 @@ async function saveData(start: bigint, subpageIndex: number, attemptNumber: numb
     'links': totalLinks,
     'ip': ipAddress, 
     'status': statusCode, 
-    'error': 'none'
+    'error': error
   }]
   await csvWriter.writeRecords(data)
 }
