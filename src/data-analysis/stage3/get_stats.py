@@ -14,6 +14,7 @@ control_stats_path = 'analysis/stage3/stats/control-analysis.csv'
 chi_squared_individual_path = 'analysis/stage3/stats/chi-squared-individual.txt'
 chi_squared_blocks_path = 'analysis/stage3/stats/chi-squared-blocks.txt'
 two_sample_proportion_unsure_path = 'analysis/stage3/stats/two-sample-proportion-unsure.txt'
+two_sample_proportion_unsure_noscreenshot_path = 'analysis/stage3/stats/two-sample-proportion-unsure-noscreenshot.txt'
 
 # ID,Domain,Mullvad Response Domain,Control Response Domain,Mullvad Status Code,Control Status Code,Mullvad Error,Control Error,PHash Difference
 
@@ -297,12 +298,28 @@ def two_sample_proportion_unsure():
         file.write('Independent (H0 holds true)' + '\n')
 
 
-def two_sample_proportion_unsure_ttest():
+
+def two_sample_proportion_unsure_noscreenshot():
+
+    # following https://medium.com/analytics-vidhya/testing-a-difference-in-population-proportions-in-python-89d57a06254
+
+    # prep file writer
+    file = open(two_sample_proportion_unsure_noscreenshot_path,"w")
+    file.write('Test if the requests that could not be identified as blocks are statistically significant.\n')
+    file.write('\n')
+    file.write('p_b is the proportion of blocked requests when we count unsure as blocked.\n')
+    file.write('p_nb is the proportion of blocked requests when we count unsure as not blocked.\n')
+    file.write('\n')
+    file.write('H0: p_b - p_nb = 0.\n')
+    file.write('H1: p_b - p_nb != 0.\n')
+    file.write('\n')
+    file.write('Alpha value set at 0.10 (a standard for two tailed tests)\n')
+    file.write('\n')
 
     # add all data points into contingency table
     total_requests = 15000
     total_blocked = 0
-    total_unsure = 0
+    total_unsure = 32 + 33 + 30 + 33 + 34
 
     blocks_df = pd.read_csv(block_stats_path)
 
@@ -314,23 +331,45 @@ def two_sample_proportion_unsure_ttest():
     # columns: count unsure as blocked, count unsure as not blocked
     # rows: blocked, not blocked
     table = [
-        [total_blocked + total_unsure, total_requests - (total_blocked + total_unsure)],
-        [total_blocked, total_requests - total_blocked]
+        [total_blocked + total_unsure, total_blocked],
+        [total_requests - (total_blocked + total_unsure), total_requests - total_blocked]
     ]
 
-    t_statistic, p_value = ttest_ind(table[0], table[1], equal_var=False)
+    # transform table into proportions
+    proportions = []
+    for row in table:
+        proportions.append(list(map(lambda x: x/total_requests, row)))
+    file.write('Proportions table:\n')
+    file.write(str(proportions) + '\n')
+    file.write('\n')
 
-    print('Test statistic: ' + str(t_statistic))
-    print('p-value: ' + str(p_value))
+    # Standard error for difference in Population Proportions
+    total_proportion_blocked = sum(proportions[0])/2
+    variance = total_proportion_blocked * (1 - total_proportion_blocked)
+    standard_error = np.sqrt(variance * (1 / total_requests + 1 / total_requests))
+    file.write('Sample Standard Error: ' + ("%.3f" % standard_error) + '\n')
+    file.write('\n')
 
+    # Calculate the test statistic 
+    best_estimate = (proportions[0][0] - proportions[0][1])     # p_b - p_nb
+    file.write('The best estimate is ' + ("%.3f" % best_estimate) + '\n')
+    file.write('\n')
+    hypothesized_estimate = 0
+    test_stat = (best_estimate-hypothesized_estimate) / standard_error
+    file.write('Computed Test Statistic is ' + ("%.3f" % test_stat) + '\n')
+    file.write('\n')
+
+    # Calculate the  p-value
+    p_value = 2 * dist.norm.cdf(-np.abs(test_stat))     # multiplied by two because it is a two tailed testing
+    file.write('Computed p-value is ' + str(p_value) + '\n')
+    file.write('\n')
+  
     # interpret p-value
     alpha = 0.10
     if p_value <= alpha:
-        print('Dependent (reject H0)')
+        file.write('Dependent (reject H0)' + '\n')
     else:
-        print('Independent (H0 holds true)')
-
-
+        file.write('Independent (H0 holds true)' + '\n')
 
 
 
@@ -339,4 +378,4 @@ def two_sample_proportion_unsure_ttest():
 # chi_squared_individual()
 # chi_squared_blocks()
 # two_sample_proportion_unsure()
-two_sample_proportion_unsure_ttest()
+two_sample_proportion_unsure_noscreenshot()
