@@ -12,8 +12,8 @@ const year = datetime.getFullYear()
 const fullDate = year + "-" + month + "-" + date
 
 // contants
-const numberDomains = 10
-const browserLimit = 5
+const numberDomains = 1000
+const browserLimit = 300
 const requestRetries = 3
 const timeouts = [20000, 30000, 35000, 40000]
 // const clearoutLimit = 10
