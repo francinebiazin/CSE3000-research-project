@@ -12,12 +12,12 @@ const year = datetime.getFullYear()
 const fullDate = year + "-" + month + "-" + date
 
 // contants
-const numberDomains = 1000
-const browserLimit = 200
+const numberDomains = 10
+const browserLimit = 5
 const requestRetries = 3
 const timeouts = [20000, 30000, 35000, 40000]
 // const clearoutLimit = 10
-const csvDir = 'data/stage4/csvs/' + fullDate
+const csvDir = 'data/stage4/csvs/test/' + fullDate
 
 // variables
 let index = 1
@@ -29,7 +29,7 @@ const cookieExtension = 'extensions/cookies_ext/3.3.0_0'
 const adblockerExtension = 'extensions/adblock_ext/4.33.0_0'
 
 // Mullvad
-const screenshotDir = 'data/stage4/screenshots/' + fullDate + '-mullvad'
+const screenshotDir = 'data/stage4/screenshots/test/' + fullDate + '-mullvad'
 const csvPath = csvDir + '/' + fullDate + '-mullvad.csv'
 
 // Control
@@ -97,12 +97,11 @@ async function runBrowser() {
     ],
   })
   .then(async browser => {
-    // start browser
+    // keep Chromium from downloading files
+    let client = await browser.target().createCDPSession()
+    await client.send('Browser.setDownloadBehavior', {behavior: 'deny'})
     let page = await browser.newPage()
     page.removeAllListeners('requests')
-    // keep Chromium from downloading files
-    let client = await page.target().createCDPSession()
-    await client.send('Page.setDownloadBehavior', {behavior: 'deny'})
     // get session IP address
     let response
     let ipAddress
@@ -124,9 +123,6 @@ async function runBrowser() {
     for (let j = start; j < end; j++) {
       page = await browser.newPage()
       page.removeAllListeners('requests')
-      // keep Chromium from downloading files
-      client = await page.target().createCDPSession()
-      await client.send('Page.setDownloadBehavior', {behavior: 'deny'})
       // time request
       const startTime = process.hrtime.bigint()
       // get complete domain path
