@@ -149,7 +149,7 @@ async function runBrowser() {
             const hrefs = await page.evaluate(() => 
               Array.from(document.querySelectorAll("a")).map(anchor => anchor.href)
             )
-            links = [...new Set(hrefs.filter(link => (link.includes(domains[j] + '/') && link !== page.url() && link !== (page.url() + '/#'))))]
+            links = hrefs.filter(link => (link.includes(domains[j] + '/') && link !== page.url() && link !== (page.url() + '/#')))
             // links.map(link => console.log(link))
           }
           await saveData(startTime, 0, i, completeDomain, page.url(), links.length, ipAddress, statusCode)
