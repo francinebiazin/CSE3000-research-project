@@ -1,5 +1,5 @@
 import csv
-from shutil import copy2
+# from shutil import copy2
 
 # variables
 date = '2021-5-25'
@@ -11,6 +11,7 @@ block_analysis = 'analysis/stage3/block-analysis/{}-block-analysis.csv'.format(d
 aggregated_blocks = 'analysis/stage3/individual/aggregated-blocks.csv'
 manual_check_path = 'analysis/stage3/manual-checks/'
 mullvad_path = 'data/stage3/screenshots/{}-mullvad'.format(date)
+control_errors = 'analysis/stage3/stats/control-errors.csv'
 
 
 # ID,Domain,Mullvad Response Domain,Control Response Domain,Mullvad Status Code,Control Status Code,Mullvad Error,Control Error,PHash Difference
@@ -53,13 +54,14 @@ def analyse_blocks():
                     if phash > phash_threshold:
                         manual_check = 'yes'
                         # copy file for manual check
-                        src = mullvad_path + '/{}-{}-{}.png'.format(date, id, domain.split('//')[1])
-                        copy2(src, manual_check_path)
+                        # src = mullvad_path + '/{}-{}-{}.png'.format(date, id, domain.split('//')[1])
+                        # copy2(src, manual_check_path)
                     else:
                         manual_check = 'no'
                         blocked = 'no'
                 # control does not have screenshot
                 else:
+                    # cases already manually verified and no blocks found
                     manual_check = 'no'
                     blocked = 'no'
             # Mullvad: status code is non-2xx
@@ -71,7 +73,7 @@ def analyse_blocks():
                     type_block = mullvad_code
                 # Control: status code is non-2xx
                 elif control_code > 0:
-                    blocked = 'no'
+                    blocked = 'no difference'
                     type_block = 'NA'
                 # Control: no status code
                 else:
@@ -99,23 +101,25 @@ def analyse_blocks():
                     blocked = 'yes'
                 # Control: status code is non-2xx
                 elif control_code > 0:
-                    blocked = 'no'
-                    type_block = 'NA'
+                    blocked = 'maybe: control {}'.format(control_code)
                 # Control: no status code
                 else:
-                    # Control: timeout
-                    if 'Navigation ' in control_error:
-                        # Mullvad: timeout
-                        if 'Navigation ' in mullvad_error:
-                            blocked = 'no'
+                    # Mullvad: timeout
+                    if 'Navigation ' in mullvad_error:
+                        # check if control and Mullvad had the same error
+                        if 'Navigation ' in control_error:
+                            blocked = 'no difference'
                             type_block = 'NA'
-                        # Mullvad: error
                         else:
-                            blocked = 'maybe: control timeout'
-                    # Control: error
+                            blocked = 'maybe: control {}'.format(control_error.split()[0])
+                    # Mullvad: error
                     else:
-                        blocked = 'no'
-                        type_block = 'NA'
+                        # check if control and Mullvad had the same error
+                        if 'Navigation ' in control_error:
+                            blocked = 'maybe: control timeout'
+                        else:
+                            blocked = 'no difference'
+                            type_block = 'NA'
             # write data
             with open (block_analysis,'a') as csv_file:                            
                 csv_writer = csv.DictWriter(csv_file, delimiter=',', fieldnames=list(headers))
@@ -130,13 +134,16 @@ def analyse_blocks():
                 csv_writer.writerow(data)
 
 
+# perform manual checks before running this!
 def get_aggregated_blocks():
     # initialise data dict
     data = {
         'Date': date,
         'Manual Check': 0,
+        'Not Blocked': 0,
         'Blocked': 0,
         'Maybe Blocked': 0,
+        'No Difference': 0,
         'HTTP Blocks': 0,
         'Timeout Blocks': 0,
         'Error Blocks': 0,
@@ -154,7 +161,11 @@ def get_aggregated_blocks():
             type_block = row['Type of Block']
             if manual_check == 'yes':
                 data['Manual Check'] += 1
-            if blocked == 'yes':
+            if blocked == 'no':
+                data['Not Blocked'] += 1
+            elif blocked == 'no difference':
+                data['No Difference'] += 1
+            elif blocked == 'yes':
                 data['Blocked'] += 1
                 if type_block == 'timeout':
                     data['Timeout Blocks'] += 1
@@ -174,8 +185,61 @@ def get_aggregated_blocks():
     # write data
     with open (aggregated_blocks,'a') as csv_file:                            
         csv_writer = csv.DictWriter(csv_file, delimiter=',', fieldnames=list(data.keys()))
+        # csv_writer.writeheader()
         csv_writer.writerow(data)
+
+
+def analyse_control_errors():
+    # prepare csv
+    headers = [
+        'ID',
+        'Domain',
+        'Frequency'
+    ]
+    with open(control_errors, 'w') as csv_file:
+        writer = csv.DictWriter(csv_file, headers)
+        writer.writeheader()
+    
+    dates = ['2021-5-21', '2021-5-22', '2021-5-23', '2021-5-24', '2021-5-25']
+
+    data = {}
+
+    for date in dates:
+        path = 'analysis/stage3/aggregated/{}-aggregated.csv'.format(date)
+        with open(path, mode='r', newline='') as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            for row in csv_reader:
+                # data that needs to be saved:
+                id = row['ID']
+                domain = row['Domain']
+                phash = row['PHash Difference']
+                # get data
+                mullvad_code = int(row['Mullvad Status Code'])
+                # Mullvad: status code is 2xx
+                if mullvad_code > 199 and mullvad_code < 300:
+                    # check if control does not have a screenshot
+                    if phash in ['none', 'NA']:
+                        if id in data:
+                            data[id]['Frequency'] += 1
+                        else:
+                            data[id] = {
+                                'Domain': domain,
+                                'Frequency': 1
+                            }
+                
+    # write data
+    for id, info in data.items():
+        with open (control_errors,'a') as csv_file:                            
+            csv_writer = csv.DictWriter(csv_file, delimiter=',', fieldnames=list(headers))
+            data = {
+                'ID': id,
+                'Domain': info['Domain'],
+                'Frequency': info['Frequency']
+            }
+            csv_writer.writerow(data)
+
 
 
 # analyse_blocks()
 get_aggregated_blocks()
+# analyse_control_errors()
