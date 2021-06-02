@@ -3,6 +3,7 @@ import numpy as np
 import csv
 from scipy.stats import chi2_contingency, ttest_ind
 import scipy.stats.distributions as dist
+from statsmodels.stats.proportion import proportions_ztest
 
 # aggregated_path = 'analysis/stage3/aggregated/{}-aggregated.csv'.format(date)
 mullvad_analysis_path = 'analysis/stage3/individual/mullvad-analysis.csv'
@@ -14,7 +15,8 @@ control_stats_path = 'analysis/stage3/stats/control-analysis.csv'
 chi_squared_individual_path = 'analysis/stage3/stats/chi-squared-individual.txt'
 chi_squared_blocks_path = 'analysis/stage3/stats/chi-squared-blocks.txt'
 two_sample_proportion_unsure_path = 'analysis/stage3/stats/two-sample-proportion-unsure.txt'
-two_sample_proportion_unsure_noscreenshot_path = 'analysis/stage3/stats/two-sample-proportion-unsure-noscreenshot.txt'
+two_sample_proportion_unsure_check_path = 'analysis/stage3/stats/two-sample-proportion-unsure-check.txt'
+two_sample_proportion_blocks_path = 'analysis/stage3/stats/two-sample-proportion-blocks.txt'
 
 # ID,Domain,Mullvad Response Domain,Control Response Domain,Mullvad Status Code,Control Status Code,Mullvad Error,Control Error,PHash Difference
 
@@ -304,10 +306,127 @@ def two_sample_proportion_unsure():
         file.write('Independent (H0 holds true)' + '\n')
 
 
+def two_sample_proportion_unsure_check():
+    # can we assume anything from our sample
+    significance = 0.025
+
+    # prep file writer
+    file = open(two_sample_proportion_unsure_check_path,"w")
+    file.write('Test if the requests that could not be identified as blocks are statistically significant.\n')
+    file.write('\n')
+    file.write('p_b is the proportion of blocked requests when we count unsure as blocked.\n')
+    file.write('p_nb is the proportion of blocked requests when we count unsure as not blocked.\n')
+    file.write('\n')
+    file.write('H0: p_b - p_nb = 0.\n')
+    file.write('H1: p_b - p_nb != 0.\n')
+    file.write('\n')
+    file.write('Alpha value set at 0.025\n')
+    file.write('\n')
+
+    # add all data points into contingency table
+    total_requests = 15000
+    total_blocked = 0
+    total_unsure = 0
+
+    blocks_df = pd.read_csv(block_stats_path)
+
+    for i in range(5):
+        row_df = blocks_df.iloc[i]
+        total_blocked += row_df['Blocked']
+        total_unsure += row_df['Maybe Blocked']
+
+    # our samples - 82% are good in one, and ~79% are good in the other
+    # note - the samples do not need to be the same size
+    sample_success_a, sample_size_a = (total_blocked + total_unsure, total_requests)
+    sample_success_b, sample_size_b = (total_blocked, total_requests)
+
+    # check our sample against Ho for Ha != Ho
+    successes = np.array([sample_success_a, sample_success_b])
+    samples = np.array([sample_size_a, sample_size_b])
+
+    # note, no need for a Ho value here - it's derived from the other parameters
+    stat, p_value = proportions_ztest(count=successes, nobs=samples,  alternative='two-sided')
+
+    # report
+    file.write('Computed Test Statistic is ' + ("%.3f" % stat) + '\n')
+    file.write('\n')
+    file.write('Computed p-value is ' + ("%.3f" % p_value) + '\n')
+    file.write('\n')
+
+    # inference
+    if p_value <= significance:
+        file.write('Dependent (reject H0)' + '\n')
+    else:
+        file.write('Independent (H0 holds true)' + '\n')
+
+
+def two_sample_proportion_blocks():
+    # can we assume anything from our sample
+    significance = 0.025
+
+    # prep file writer
+    file = open(two_sample_proportion_blocks_path,"w")
+    file.write('Test if the blocks, timeouts and errors experienced by Mullvad VPN are statistically significant compared to timeouts and errors experienced by the control connection.\n')
+    file.write('\n')
+    file.write('p_m is the proportion of blocks, non-2xx status codes, timeouts and errors from Mullvad requests.\n')
+    file.write('p_c is the proportion of non-2xx status codes, timeouts and errors from control requests.\n')
+    file.write('\n')
+    file.write('H0: p_m - p_c = 0.\n')
+    file.write('H1: p_m - p_c != 0.\n')
+    file.write('\n')
+    file.write('Alpha value set at 0.025\n')
+    file.write('\n')
+
+    # calculate values for Mullvad
+    total_requests = 15000
+    mullvad_not_blocked = 0
+
+    blocks_df = pd.read_csv(block_stats_path)
+
+    for i in range(5):
+        row_df = blocks_df.iloc[i]
+        mullvad_not_blocked += row_df['Not Blocked']
+    
+    mullvad_issues = total_requests - mullvad_not_blocked
+
+    # calculate values for Control
+    control_2xx = 0
+
+    control_df = pd.read_csv(control_analysis_path)
+
+    for i in range(5):
+        row_df = control_df.iloc[i]
+        control_2xx += row_df['2xx']
+    
+    control_issues = total_requests - control_2xx
+
+    # check our sample against Ho for Ha != Ho
+    successes = np.array([mullvad_issues, control_issues])
+    samples = np.array([total_requests, total_requests])
+
+    # note, no need for a Ho value here - it's derived from the other parameters
+    stat, p_value = proportions_ztest(count=successes, nobs=samples,  alternative='two-sided')
+
+    # report
+    file.write('Computed Test Statistic is ' + ("%.3f" % stat) + '\n')
+    file.write('\n')
+    file.write('Computed p-value is ' + ("%.3f" % p_value) + '\n')
+    file.write('\n')
+
+    # inference
+    if p_value <= significance:
+        file.write('Dependent (reject H0)' + '\n')
+    else:
+        file.write('Independent (H0 holds true)' + '\n')
+
+
+
 
 
 # get_stats_individual()
 # get_block_stats()
 # chi_squared_individual()
 # chi_squared_blocks()
-two_sample_proportion_unsure()
+# two_sample_proportion_unsure()
+# two_sample_proportion_unsure_check()
+two_sample_proportion_blocks()
