@@ -424,9 +424,9 @@ def two_sample_proportion_blocks():
 
 
 # get_stats_individual()
-# get_block_stats()
+get_block_stats()
 # chi_squared_individual()
 # chi_squared_blocks()
 # two_sample_proportion_unsure()
 # two_sample_proportion_unsure_check()
-two_sample_proportion_blocks()
+# two_sample_proportion_blocks()
