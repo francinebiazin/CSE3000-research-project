@@ -49,7 +49,7 @@ fs.mkdir(csvDir, { recursive: true }, (error) => {
 })
 
 // load the domains from list created from Stage 4.1 data
-const domainsPath = 'domains/2021-6-1-stage4domains.csv'
+const domainsPath = 'domains/2021-6-4-stage4domains.csv'
 const parser = papaparse.parse(fs.readFileSync(domainsPath, { encoding: 'utf-8' }))
 const links: string[][] = []
 let pages: string[] = []
