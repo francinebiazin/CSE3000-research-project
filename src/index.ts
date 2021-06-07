@@ -73,7 +73,8 @@ for (let i = 0; i < parser.data.length; i++) {
   }
   else {
     const link = row[1]
-    if (link.includes(dom)) {
+    // check if there's at least one character of non-whitespace
+    if (/\S/.test(link)) {
       pages.push(link)
     }
   }
