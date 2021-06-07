@@ -53,7 +53,6 @@ const domainsPath = 'domains/2021-6-4-stage4domains.csv'
 const parser = papaparse.parse(fs.readFileSync(domainsPath, { encoding: 'utf-8' }))
 const links: string[][] = []
 let pages: string[] = []
-let dom = 'none'
 for (let i = 0; i < parser.data.length; i++) {
   const row: any = parser.data[i]
   if (typeof row[1] == 'undefined') {
@@ -68,7 +67,6 @@ for (let i = 0; i < parser.data.length; i++) {
     // reset array of subpages
     pages = []
     const link = row[1]
-    dom = link.split("//")[1]
     pages.push(link)
   }
   else {
