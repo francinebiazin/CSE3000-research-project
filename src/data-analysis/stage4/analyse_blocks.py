@@ -2,7 +2,7 @@ import csv
 from shutil import copy2
 
 # variables
-date = '2021-6-8'
+date = '2021-6-9'
 phash_threshold = 19
 
 # paths
@@ -62,7 +62,6 @@ def analyse_blocks():
                         # copy file for manual check
                         src = mullvad_path + '/{}-{}-{}-{}.png'.format(date, id, domain.split('//')[1], subpage)
                         copy2(src, manual_check_path)
-                        # CHANGE THIS!!!!
                         blocked = '?'
                     else:
                         manual_check = 'no'
