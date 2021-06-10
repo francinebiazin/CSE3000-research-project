@@ -2,7 +2,7 @@ import csv
 from shutil import copy2
 
 # variables
-date = '2021-6-7'
+date = '2021-6-8'
 phash_threshold = 19
 
 # paths
@@ -60,10 +60,10 @@ def analyse_blocks():
                     if phash > phash_threshold:
                         manual_check = 'yes'
                         # copy file for manual check
-                        # src = mullvad_path + '/{}-{}-{}-{}.png'.format(date, id, domain.split('//')[1], subpage)
-                        # copy2(src, manual_check_path)
+                        src = mullvad_path + '/{}-{}-{}-{}.png'.format(date, id, domain.split('//')[1], subpage)
+                        copy2(src, manual_check_path)
                         # CHANGE THIS!!!!
-                        blocked = 'no'
+                        blocked = '?'
                     else:
                         manual_check = 'no'
                         blocked = 'no'
@@ -209,7 +209,7 @@ def analyse_control_errors():
         writer = csv.DictWriter(csv_file, headers)
         writer.writeheader()
     
-    dates = ['2021-6-7']
+    dates = ['2021-6-8']
 
     data = {}
 
@@ -322,10 +322,8 @@ def get_subpages_blocks():
                     home_page_blocked = True
                     data['Home Page Blocked'] += 1
                 elif 'maybe' in blocked:
-                    home_page_blocked = True
                     maybe = True
                 elif blocked == 'no difference':
-                    home_page_blocked = True
                     no_difference = True
             # subpage
             else:
@@ -368,9 +366,9 @@ def get_subpages_blocks():
     elif not home_page_blocked:
         data['Not Blocked'] += 1
        
-    with open(subpage_blocks, 'w') as csv_file:
+    with open(subpage_blocks, 'a') as csv_file:
         writer = csv.DictWriter(csv_file, list(data.keys()))
-        writer.writeheader()
+        # writer.writeheader()
         writer.writerow(data)
 
 
