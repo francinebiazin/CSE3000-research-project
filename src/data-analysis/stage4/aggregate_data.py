@@ -1,6 +1,6 @@
 import csv
 
-date = '2021-6-7'
+date = '2021-6-10'
 
 # paths
 mullvad_path = "data/stage4/csvs/{}/{}-mullvad.csv".format(date, date)
@@ -129,5 +129,5 @@ def aggregate_data():
 
 
 aggregate_data()
-# individual_data(mullvad_path, mullvad_analysis, 'Mullvad VPN')
-# individual_data(control_path, control_analysis, 'Control')
+individual_data(mullvad_path, mullvad_analysis, 'Mullvad VPN')
+individual_data(control_path, control_analysis, 'Control')
