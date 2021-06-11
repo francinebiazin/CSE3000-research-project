@@ -1,8 +1,7 @@
 import pandas as pd
 import numpy as np
 import csv
-from scipy.stats import chi2_contingency, ttest_ind
-import scipy.stats.distributions as dist
+from scipy.stats import chi2_contingency
 from statsmodels.stats.proportion import proportions_ztest
 
 # aggregated_path = 'analysis/stage3/aggregated/{}-aggregated.csv'.format(date)
@@ -17,7 +16,9 @@ chi_squared_blocks_path = 'analysis/stage4/stats/chi-squared-blocks.txt'
 two_sample_proportion_unsure_path = 'analysis/stage4/stats/two-sample-proportion-unsure.txt'
 two_sample_proportion_unsure_check_path = 'analysis/stage4/stats/two-sample-proportion-unsure-check.txt'
 two_sample_proportion_blocks_path = 'analysis/stage4/stats/two-sample-proportion-blocks.txt'
-subpage_blocks = 'analysis/stage4/stats/subpage-blocks.csv'
+subpage_blocks = 'analysis/stage4/individual/subpage-blocks.csv'
+chi_squared_subpages_path = 'analysis/stage4/stats/chi-squared-subpages.txt'
+two_sample_proportion_subpages_path = 'analysis/stage4/stats/two-sample-proportion-subpages.txt'
 
 # ID,Domain,Mullvad Response Domain,Control Response Domain,Mullvad Status Code,Control Status Code,Mullvad Error,Control Error,PHash Difference
 
@@ -142,7 +143,7 @@ def chi_squared_individual():
 
     mullvad_df = pd.read_csv(mullvad_analysis_path)
 
-    for i in range(5):
+    for i in range(4):
         row_df = mullvad_df.iloc[i]
         row = []
         row.append(row_df['2xx'])
@@ -172,7 +173,7 @@ def chi_squared_individual():
 
     control_df = pd.read_csv(control_analysis_path)
 
-    for i in range(5):
+    for i in range(4):
         row_df = control_df.iloc[i]
         row = []
         row.append(row_df['2xx'])
@@ -210,12 +211,12 @@ def chi_squared_blocks():
 
     blocks_df = pd.read_csv(block_stats_path)
 
-    for i in range(5):
+    for i in range(4):
         row_df = blocks_df.iloc[i]
         row = []
         row.append(row_df['Not Blocked'])
         row.append(row_df['Blocked'])
-        row.append(row_df['Maybe Blocked'])
+        # row.append(row_df['Maybe Blocked'])
         row.append(row_df['No Difference'])
         data.append(row)
 
@@ -232,82 +233,52 @@ def chi_squared_blocks():
         file.write('Dependent (reject H0)' + '\n')
     else:
         file.write('Independent (H0 holds true)' + '\n')
-    
 
-def two_sample_proportion_unsure():
 
-    # following https://medium.com/analytics-vidhya/testing-a-difference-in-population-proportions-in-python-89d57a06254
+def chi_squared_subpages():
 
     # prep file writer
-    file = open(two_sample_proportion_unsure_path,"w")
-    file.write('Test if the requests that could not be identified as blocks are statistically significant.\n')
-    file.write('\n')
-    file.write('p_b is the proportion of blocked requests when we count unsure as blocked.\n')
-    file.write('p_nb is the proportion of blocked requests when we count unsure as not blocked.\n')
-    file.write('\n')
-    file.write('H0: p_b - p_nb = 0.\n')
-    file.write('H1: p_b - p_nb != 0.\n')
-    file.write('\n')
+    file = open(chi_squared_subpages_path,"w")
+    file.write('Test if the subpage blocks identified on the 5 different days are dependent or not.\n')
+    file.write('H0: independently distributed.\n')
+    file.write('H1: dependently distributed.\n')
     file.write('Alpha value set at 0.05\n')
-    file.write('\n')
+    file.write('\n \n')
 
-    # add all data points into contingency table
-    total_requests = 15000
-    total_blocked = 0
-    total_unsure = 0
+    # define data table
+    data = []
 
-    blocks_df = pd.read_csv(block_stats_path)
+    subpages_df = pd.read_csv(subpage_blocks)
 
-    for i in range(5):
-        row_df = blocks_df.iloc[i]
-        total_blocked += row_df['Blocked']
-        total_unsure += row_df['Maybe Blocked']
+    # Not Blocked,Home Page Blocked,Subpage Blocked,Maybe Blocked,No Difference
 
-    # columns: count unsure as blocked, count unsure as not blocked
-    # rows: blocked, not blocked
-    table = [
-        [total_blocked + total_unsure, total_blocked],
-        [total_requests - (total_blocked + total_unsure), total_requests - total_blocked]
-    ]
+    for i in range(4):
+        row_df = subpages_df.iloc[i]
+        row = []
+        row.append(row_df['Not Blocked'])
+        row.append(row_df['Home Page Blocked'])
+        row.append(row_df['Subpage Blocked'])
+        # row.append(row_df['Maybe Blocked'])
+        row.append(row_df['No Difference'])
+        data.append(row)
 
-    # transform table into proportions
-    proportions = []
-    for row in table:
-        proportions.append(list(map(lambda x: x/total_requests, row)))
-    file.write('Proportions table:\n')
-    file.write(str(proportions) + '\n')
-    file.write('\n')
-
-    # Standard error for difference in Population Proportions
-    total_proportion_blocked = sum(proportions[0])/2
-    variance = total_proportion_blocked * (1 - total_proportion_blocked)
-    standard_error = np.sqrt(variance * (1 / total_requests + 1 / total_requests))
-    file.write('Sample Standard Error: ' + ("%.3f" % standard_error) + '\n')
-    file.write('\n')
-
-    # Calculate the test statistic 
-    best_estimate = (proportions[0][0] - proportions[0][1])     # p_b - p_nb
-    file.write('The best estimate is ' + ("%.3f" % best_estimate) + '\n')
-    file.write('\n')
-    hypothesized_estimate = 0
-    test_stat = (best_estimate-hypothesized_estimate) / standard_error
-    file.write('Computed Test Statistic is ' + ("%.3f" % test_stat) + '\n')
-    file.write('\n')
-
-    # Calculate the  p-value
-    p_value = 2 * dist.norm.cdf(-np.abs(test_stat))     # multiplied by two because it is a two tailed testing
-    file.write('Computed p-value is ' + ("%.3f" % p_value) + '\n')
-    file.write('\n')
+    chi2, p, dof, expected = chi2_contingency(data)
   
     # interpret p-value
     alpha = 0.05
-    if p_value <= alpha:
+    file.write("Subpage chi2 value is " + ("%.3f" % chi2) + '\n')
+    file.write("Subpage p value is " + ("%.3f" % p) + '\n')
+    file.write("Subpage degrees of freedom: " + str(dof) + '\n')
+    file.write("Subpage expected frequencies table:" + '\n')
+    file.write(str(expected) + '\n')
+    if p <= alpha:
         file.write('Dependent (reject H0)' + '\n')
     else:
         file.write('Independent (H0 holds true)' + '\n')
 
 
-def two_sample_proportion_unsure_check():
+
+def two_sample_proportion_unsure():
     # can we assume anything from our sample
     significance = 0.025
 
@@ -367,6 +338,66 @@ def two_sample_proportion_blocks():
 
     # prep file writer
     file = open(two_sample_proportion_blocks_path,"w")
+    file.write('Test if the homepage blocks, subpage blocks, timeouts and errors experienced by Mullvad VPN are statistically significant compared to timeouts and errors experienced by the control connection.\n')
+    file.write('\n')
+    file.write('p_m is the proportion of blocks, non-2xx status codes, timeouts and errors from Mullvad requests.\n')
+    file.write('p_c is the proportion of non-2xx status codes, timeouts and errors from control requests.\n')
+    file.write('\n')
+    file.write('H0: p_m - p_c = 0.\n')
+    file.write('H1: p_m - p_c != 0.\n')
+    file.write('\n')
+    file.write('Alpha value set at 0.025\n')
+    file.write('\n')
+
+    # calculate values for Mullvad
+    total_requests = 12000
+    mullvad_not_blocked = 0
+
+    blocks_df = pd.read_csv(block_stats_path)
+
+    for i in range(4):
+        row_df = blocks_df.iloc[i]
+        mullvad_not_blocked += row_df['Not Blocked']
+    
+    mullvad_issues = total_requests - mullvad_not_blocked
+
+    # calculate values for Control
+    control_2xx = 0
+
+    control_df = pd.read_csv(control_analysis_path)
+
+    for i in range(4):
+        row_df = control_df.iloc[i]
+        control_2xx += row_df['2xx']
+    
+    control_issues = total_requests - control_2xx
+
+    # check our sample against Ho for Ha != Ho
+    successes = np.array([mullvad_issues, control_issues])
+    samples = np.array([total_requests, total_requests])
+
+    # note, no need for a Ho value here - it's derived from the other parameters
+    stat, p_value = proportions_ztest(count=successes, nobs=samples,  alternative='two-sided')
+
+    # report
+    file.write('Computed Test Statistic is ' + ("%.3f" % stat) + '\n')
+    file.write('\n')
+    file.write('Computed p-value is ' + ("%.3f" % p_value) + '\n')
+    file.write('\n')
+
+    # inference
+    if p_value <= significance:
+        file.write('Dependent (reject H0)' + '\n')
+    else:
+        file.write('Independent (H0 holds true)' + '\n')
+
+
+def two_sample_proportion_subpages():
+    # can we assume anything from our sample
+    significance = 0.025
+
+    # prep file writer
+    file = open(two_sample_proportion_subpages_path,"w")
     file.write('Test if the blocks, timeouts and errors experienced by Mullvad VPN are statistically significant compared to timeouts and errors experienced by the control connection.\n')
     file.write('\n')
     file.write('p_m is the proportion of blocks, non-2xx status codes, timeouts and errors from Mullvad requests.\n')
@@ -379,12 +410,12 @@ def two_sample_proportion_blocks():
     file.write('\n')
 
     # calculate values for Mullvad
-    total_requests = 15000
+    total_requests = 4000
     mullvad_not_blocked = 0
 
-    blocks_df = pd.read_csv(block_stats_path)
+    blocks_df = pd.read_csv(subpage_blocks)
 
-    for i in range(5):
+    for i in range(4):
         row_df = blocks_df.iloc[i]
         mullvad_not_blocked += row_df['Not Blocked']
     
@@ -395,7 +426,7 @@ def two_sample_proportion_blocks():
 
     control_df = pd.read_csv(control_analysis_path)
 
-    for i in range(5):
+    for i in range(4):
         row_df = control_df.iloc[i]
         control_2xx += row_df['2xx']
     
@@ -430,3 +461,5 @@ def two_sample_proportion_blocks():
 # two_sample_proportion_unsure()
 # two_sample_proportion_unsure_check()
 # two_sample_proportion_blocks()
+# chi_squared_subpages()
+# two_sample_proportion_subpages()
