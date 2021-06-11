@@ -2,7 +2,7 @@ import csv
 from shutil import copy2
 
 # variables
-date = '2021-6-9'
+date = '2021-6-11'
 phash_threshold = 19
 
 # paths
@@ -208,7 +208,7 @@ def analyse_control_errors():
         writer = csv.DictWriter(csv_file, headers)
         writer.writeheader()
     
-    dates = ['2021-6-8']
+    dates = ['2021-6-8', '2021-6-9', '2021-6-10', '2021-6-11']
 
     data = {}
 
