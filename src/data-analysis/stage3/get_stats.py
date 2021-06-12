@@ -17,6 +17,8 @@ chi_squared_blocks_path = 'analysis/stage3/stats/chi-squared-blocks.txt'
 two_sample_proportion_unsure_path = 'analysis/stage3/stats/two-sample-proportion-unsure.txt'
 two_sample_proportion_unsure_check_path = 'analysis/stage3/stats/two-sample-proportion-unsure-check.txt'
 two_sample_proportion_blocks_path = 'analysis/stage3/stats/two-sample-proportion-blocks.txt'
+categories_path = 'analysis/stage3/categories/stage3-categories-analysis.csv'
+chi_squared_categories_path = 'analysis/stage3/stats/chi-squared-categories.txt'
 
 # ID,Domain,Mullvad Response Domain,Control Response Domain,Mullvad Status Code,Control Status Code,Mullvad Error,Control Error,PHash Difference
 
@@ -420,13 +422,51 @@ def two_sample_proportion_blocks():
         file.write('Independent (H0 holds true)' + '\n')
 
 
+def chi_squared_categories():
+
+    # prep file writer
+    file = open(chi_squared_categories_path,"w")
+    file.write('Test if any category blocks more than others.\n')
+    file.write('H0: independently distributed.\n')
+    file.write('H1: dependently distributed.\n')
+    file.write('Alpha value set at 0.05\n')
+    file.write('\n \n')
+
+    # define data table
+    data = []
+
+    categories_df = pd.read_csv(categories_path)
+
+    for i in range(76):
+        row_df = categories_df.iloc[i]
+        if row_df['Blocked'] == 0:
+            continue
+        row = []
+        row.append(row_df['Blocked'])
+        row.append(row_df['Not Blocked'])
+        data.append(row)
+
+    chi2, p, dof, expected = chi2_contingency(data)
+  
+    # interpret p-value
+    alpha = 0.05
+    file.write("Categories chi2 value is " + ("%.3f" % chi2) + '\n')
+    file.write("Categories p value is " + ("%.3f" % p) + '\n')
+    file.write("Categories degrees of freedom: " + str(dof) + '\n')
+    file.write("Categories expected frequencies table:" + '\n')
+    file.write(str(expected) + '\n')
+    if p <= alpha:
+        file.write('Dependent (reject H0)' + '\n')
+    else:
+        file.write('Independent (H0 holds true)' + '\n')
 
 
 
 # get_stats_individual()
-get_block_stats()
+# get_block_stats()
 # chi_squared_individual()
 # chi_squared_blocks()
 # two_sample_proportion_unsure()
 # two_sample_proportion_unsure_check()
 # two_sample_proportion_blocks()
+chi_squared_categories()
