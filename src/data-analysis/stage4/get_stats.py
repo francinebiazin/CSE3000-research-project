@@ -143,7 +143,7 @@ def chi_squared_individual():
 
     mullvad_df = pd.read_csv(mullvad_analysis_path)
 
-    for i in range(4):
+    for i in range(5):
         row_df = mullvad_df.iloc[i]
         row = []
         row.append(row_df['2xx'])
@@ -173,7 +173,7 @@ def chi_squared_individual():
 
     control_df = pd.read_csv(control_analysis_path)
 
-    for i in range(4):
+    for i in range(5):
         row_df = control_df.iloc[i]
         row = []
         row.append(row_df['2xx'])
@@ -211,7 +211,7 @@ def chi_squared_blocks():
 
     blocks_df = pd.read_csv(block_stats_path)
 
-    for i in range(4):
+    for i in range(5):
         row_df = blocks_df.iloc[i]
         row = []
         row.append(row_df['Not Blocked'])
@@ -252,7 +252,7 @@ def chi_squared_subpages():
 
     # Not Blocked,Home Page Blocked,Subpage Blocked,Maybe Blocked,No Difference
 
-    for i in range(4):
+    for i in range(5):
         row_df = subpages_df.iloc[i]
         row = []
         row.append(row_df['Not Blocked'])
@@ -350,12 +350,12 @@ def two_sample_proportion_blocks():
     file.write('\n')
 
     # calculate values for Mullvad
-    total_requests = 12000
+    total_requests = 15000
     mullvad_not_blocked = 0
 
     blocks_df = pd.read_csv(block_stats_path)
 
-    for i in range(4):
+    for i in range(5):
         row_df = blocks_df.iloc[i]
         mullvad_not_blocked += row_df['Not Blocked']
     
@@ -366,7 +366,7 @@ def two_sample_proportion_blocks():
 
     control_df = pd.read_csv(control_analysis_path)
 
-    for i in range(4):
+    for i in range(5):
         row_df = control_df.iloc[i]
         control_2xx += row_df['2xx']
     
@@ -410,12 +410,12 @@ def two_sample_proportion_subpages():
     file.write('\n')
 
     # calculate values for Mullvad
-    total_requests = 4000
+    total_requests = 5000
     mullvad_not_blocked = 0
 
     blocks_df = pd.read_csv(subpage_blocks)
 
-    for i in range(4):
+    for i in range(5):
         row_df = blocks_df.iloc[i]
         mullvad_not_blocked += row_df['Not Blocked']
     
@@ -426,7 +426,7 @@ def two_sample_proportion_subpages():
 
     control_df = pd.read_csv(control_analysis_path)
 
-    for i in range(4):
+    for i in range(5):
         row_df = control_df.iloc[i]
         control_2xx += row_df['2xx']
     

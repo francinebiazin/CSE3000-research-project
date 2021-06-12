@@ -3,7 +3,7 @@ import imagehash
 from os import walk
 import csv
 
-date = '2021-6-11'
+date = '2021-6-12'
 
 mullvad_path = 'data/stage4/screenshots/{}-mullvad'.format(date)
 control_path = 'data/stage4/screenshots/{}-control'.format(date)

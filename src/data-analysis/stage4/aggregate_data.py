@@ -1,6 +1,6 @@
 import csv
 
-date = '2021-6-11'
+date = '2021-6-12'
 
 # paths
 mullvad_path = "data/stage4/csvs/{}/{}-mullvad.csv".format(date, date)
