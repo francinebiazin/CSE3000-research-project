@@ -16,7 +16,9 @@ chi_squared_blocks_path = 'analysis/stage4/stats/chi-squared-blocks.txt'
 two_sample_proportion_unsure_path = 'analysis/stage4/stats/two-sample-proportion-unsure.txt'
 two_sample_proportion_unsure_check_path = 'analysis/stage4/stats/two-sample-proportion-unsure-check.txt'
 two_sample_proportion_blocks_path = 'analysis/stage4/stats/two-sample-proportion-blocks.txt'
+control_domains_analysis = 'analysis/stage4/individual/control-domains-analysis.csv'
 subpage_blocks = 'analysis/stage4/individual/subpage-blocks.csv'
+subpage_stats_path = 'analysis/stage4/stats/subpage-analysis.csv'
 chi_squared_subpages_path = 'analysis/stage4/stats/chi-squared-subpages.txt'
 two_sample_proportion_subpages_path = 'analysis/stage4/stats/two-sample-proportion-subpages.txt'
 
@@ -124,6 +126,34 @@ def get_block_stats():
 
     # write data
     with open (block_stats_path,'a') as csv_file:                            
+        csv_writer = csv.DictWriter(csv_file, delimiter=',', fieldnames=list(data.keys()))
+        csv_writer.writerow(data)
+
+
+def get_subpage_stats():
+    subpage_df = pd.read_csv(subpage_blocks)
+
+    # Date,Not Blocked,Home Page Blocked,Subpage Blocked,Maybe Blocked,No Difference,HTTP Blocks,Timeout Blocks,Error Blocks,Differentiated Content,Block Page,Challenge-Response Test
+
+    data = {
+        'Date': 'Averages',
+        'Not Blocked': "%.2f" % (subpage_df['Not Blocked'].mean()/10),
+        'Home Page Blocked': "%.2f" % (subpage_df['Home Page Blocked'].mean()/10),
+        'Subpage Blocked': "%.2f" % (subpage_df['Subpage Blocked'].mean()/10),
+        'Maybe Blocked': "%.2f" % (subpage_df['Maybe Blocked'].mean()/10),
+        'No Difference': "%.2f" % (subpage_df['No Difference'].mean()/10),
+        'HTTP Blocks': "%.2f" % (subpage_df['HTTP Blocks'].mean()/30),
+        'Timeout Blocks': "%.2f" % (subpage_df['Timeout Blocks'].mean()/30),
+        'Error Blocks': "%.2f" % (subpage_df['Error Blocks'].mean()/30),
+        'Differentiated Content': "%.2f" % (subpage_df['Differentiated Content'].mean()/30),
+        'Block Page': "%.2f" % (subpage_df['Block Page'].mean()/30),
+        'Challenge-Response Test': "%.2f" % (subpage_df['Challenge-Response Test'].mean()/30)
+    }
+
+    subpage_df.to_csv(path_or_buf=subpage_stats_path, index=False)
+
+    # write data
+    with open (subpage_stats_path,'a') as csv_file:                            
         csv_writer = csv.DictWriter(csv_file, delimiter=',', fieldnames=list(data.keys()))
         csv_writer.writerow(data)
 
@@ -398,10 +428,10 @@ def two_sample_proportion_subpages():
 
     # prep file writer
     file = open(two_sample_proportion_subpages_path,"w")
-    file.write('Test if the blocks, timeouts and errors experienced by Mullvad VPN are statistically significant compared to timeouts and errors experienced by the control connection.\n')
+    file.write('Test if the subpage blocks experienced by Mullvad VPN are statistically significant compared to timeouts and errors experienced by the control connection.\n')
     file.write('\n')
-    file.write('p_m is the proportion of blocks, non-2xx status codes, timeouts and errors from Mullvad requests.\n')
-    file.write('p_c is the proportion of non-2xx status codes, timeouts and errors from control requests.\n')
+    file.write('p_m is the proportion of domains that have either home page or subpage blocked from Mullvad requests.\n')
+    file.write('p_c is the proportion of domains that have non-2xx status codes, timeouts and errors from control requests.\n')
     file.write('\n')
     file.write('H0: p_m - p_c = 0.\n')
     file.write('H1: p_m - p_c != 0.\n')
@@ -418,13 +448,14 @@ def two_sample_proportion_subpages():
     for i in range(5):
         row_df = blocks_df.iloc[i]
         mullvad_not_blocked += row_df['Not Blocked']
+        mullvad_not_blocked += row_df['No Difference']
     
     mullvad_issues = total_requests - mullvad_not_blocked
 
     # calculate values for Control
     control_2xx = 0
 
-    control_df = pd.read_csv(control_analysis_path)
+    control_df = pd.read_csv(control_domains_analysis)
 
     for i in range(5):
         row_df = control_df.iloc[i]
@@ -456,10 +487,11 @@ def two_sample_proportion_subpages():
 
 # get_stats_individual()
 # get_block_stats()
+# get_subpage_stats()
 # chi_squared_individual()
 # chi_squared_blocks()
 # two_sample_proportion_unsure()
 # two_sample_proportion_unsure_check()
 # two_sample_proportion_blocks()
 # chi_squared_subpages()
-# two_sample_proportion_subpages()
+two_sample_proportion_subpages()

@@ -8,6 +8,7 @@ control_path = "data/stage4/csvs/{}/{}-control.csv".format(date, date)
 aggragated_path = "analysis/stage4/aggregated/{}-aggregated.csv".format(date)
 mullvad_analysis = "analysis/stage4/individual/mullvad-analysis.csv"
 control_analysis = "analysis/stage4/individual/control-analysis.csv"
+control_domains_analysis = "analysis/stage4/individual/control-domains-analysis.csv"
 phash_path = "analysis/stage4/screenshots/{}-phash.csv".format(date)
 
 
@@ -128,6 +129,60 @@ def aggregate_data():
             writer.writerow(data)
 
 
-aggregate_data()
-individual_data(mullvad_path, mullvad_analysis, 'Mullvad VPN')
-individual_data(control_path, control_analysis, 'Control')
+def get_control_domain_analysis():
+     # prepare csv
+    headers = [
+        'Date',
+        'Connection',
+        '2xx',
+        'Non-2xx',
+        'Timeouts',
+        'Errors'
+    ]
+    with open(control_domains_analysis, 'w') as csv_file:
+        writer = csv.DictWriter(csv_file, headers)
+        writer.writeheader()
+
+    dates = ['2021-6-8', '2021-6-9', '2021-6-11', '2021-6-12', '2021-6-13']
+
+    for date in dates:
+        path = 'data/stage4/csvs/{}/{}-control.csv'.format(date, date)
+
+        # initialise data dict
+        data = {
+            'Date': date,
+            'Connection': 'Control',
+            '2xx': 0,
+            'Non-2xx': 0,
+            'Timeouts': 0,
+            'Errors': 0
+        }
+
+        with open(path, mode='r', newline='') as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            for row in csv_reader:
+                if row['Subpage ID'] != '0':
+                    continue
+                code = int(row['HTTP Status Code'])
+                error = row['Error']
+                if code > 199 and code < 300:
+                    data['2xx'] += 1
+                elif code > 0:
+                    data['Non-2xx'] += 1
+                else:
+                    error_name = error.split()[0]
+                    if 'Navigation' in error_name:
+                        data['Timeouts'] += 1
+                    else:
+                        data['Errors'] += 1
+                
+        # write data
+        with open (control_domains_analysis,'a') as csv_file:                            
+            csv_writer = csv.DictWriter(csv_file, delimiter=',', fieldnames=list(headers))
+            csv_writer.writerow(data)
+
+
+# aggregate_data()
+# individual_data(mullvad_path, mullvad_analysis, 'Mullvad VPN')
+# individual_data(control_path, control_analysis, 'Control')
+get_control_domain_analysis()
