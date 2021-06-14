@@ -450,7 +450,7 @@ def two_sample_proportion_subpages():
     for i in range(5):
         row_df = blocks_df.iloc[i]
         mullvad_not_blocked += row_df['Not Blocked']
-        mullvad_not_blocked += row_df['No Difference']
+        # mullvad_not_blocked += row_df['No Difference']
     
     mullvad_issues = total_requests - mullvad_not_blocked
 
@@ -475,7 +475,7 @@ def two_sample_proportion_subpages():
     # report
     file.write('Computed Test Statistic is ' + ("%.3f" % stat) + '\n')
     file.write('\n')
-    file.write('Computed p-value is ' + ("%.3f" % p_value) + '\n')
+    file.write('Computed p-value is ' + str(p_value) + '\n')
     file.write('\n')
 
     # inference
@@ -514,7 +514,7 @@ def chi_squared_categories():
     # interpret p-value
     alpha = 0.05
     file.write("Categories chi2 value is " + ("%.3f" % chi2) + '\n')
-    file.write("Categories p value is " + ("%.3f" % p) + '\n')
+    file.write("Categories p value is " + str(p) + '\n')
     file.write("Categories degrees of freedom: " + str(dof) + '\n')
     file.write("Categories expected frequencies table:" + '\n')
     file.write(str(expected) + '\n')
@@ -536,4 +536,4 @@ def chi_squared_categories():
 # two_sample_proportion_blocks()
 # chi_squared_subpages()
 # two_sample_proportion_subpages()
-# chi_squared_categories()
+chi_squared_categories()

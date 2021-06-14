@@ -437,13 +437,13 @@ def chi_squared_categories():
 
     categories_df = pd.read_csv(categories_path)
 
-    for i in range(76):
+    for i in range(75):
         row_df = categories_df.iloc[i]
         if row_df['Blocked'] == 0:
             continue
         row = []
         row.append(row_df['Blocked'])
-        row.append(row_df['Not Blocked'])
+        row.append(row_df['Other'])
         data.append(row)
 
     chi2, p, dof, expected = chi2_contingency(data)
@@ -451,7 +451,7 @@ def chi_squared_categories():
     # interpret p-value
     alpha = 0.05
     file.write("Categories chi2 value is " + ("%.3f" % chi2) + '\n')
-    file.write("Categories p value is " + ("%.3f" % p) + '\n')
+    file.write("Categories p value is " + str(p) + '\n')
     file.write("Categories degrees of freedom: " + str(dof) + '\n')
     file.write("Categories expected frequencies table:" + '\n')
     file.write(str(expected) + '\n')
