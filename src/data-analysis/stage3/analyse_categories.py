@@ -1,4 +1,6 @@
 import csv
+import matplotlib.pyplot as plt
+import pandas as pd
 
 categories_path = 'categories/categories-domains.csv'
 categories_analysis = 'analysis/stage3/categories/stage3-categories-analysis.csv'
@@ -22,7 +24,7 @@ def analyse_categories():
 
     # prepare csv file
     with open (categories_analysis,'w') as csv_file:                            
-        csv_writer = csv.DictWriter(csv_file, delimiter=',', fieldnames=['Category', 'Blocked', 'Not Blocked'])
+        csv_writer = csv.DictWriter(csv_file, delimiter=',', fieldnames=['Category', 'Blocked', 'Other'])
         csv_writer.writeheader()
 
     categories = get_categories()
@@ -50,28 +52,66 @@ def analyse_categories():
                     else:
                         data[category] = {
                             'Blocked': 1,
-                            'Not Blocked': 0
+                            'Other': 0
                         }
                 else:
                     # check if category already in dictionary
                     if category in data:
-                        data[category]['Not Blocked'] += 1
+                        data[category]['Other'] += 1
                     else:
                         data[category] = {
                             'Blocked': 0,
-                            'Not Blocked': 1
+                            'Other': 1
                         }
 
     # write data
     for category, info in data.items():
         with open (categories_analysis,'a') as csv_file:                            
-            csv_writer = csv.DictWriter(csv_file, delimiter=',', fieldnames=['Category', 'Blocked', 'Not Blocked'])
+            csv_writer = csv.DictWriter(csv_file, delimiter=',', fieldnames=['Category', 'Blocked', 'Other'])
             data = {
                 'Category': category,
                 'Blocked': info['Blocked'],
-                'Not Blocked': info['Not Blocked']
+                'Other': info['Other']
             }
             csv_writer.writerow(data)
 
 
-analyse_categories()
+def get_proportion_graph():
+
+    data = {}
+
+    # Category,Blocked,Other
+    with open(categories_analysis, mode='r', newline='') as csv_file:
+        csv_reader = csv.DictReader(csv_file)
+        for row in csv_reader:
+            blocked = int(row['Blocked'])
+            if blocked == 0:
+                continue
+            other = int(row['Other'])
+            category = row['Category']
+            data[category] = blocked/(blocked + other) * 100
+    
+
+    df = pd.DataFrame({'categories' : list(data.keys()) , 'values' : list(data.values())})
+    df = df.sort_values('values')
+
+    # Set the figure size
+    fig = plt.figure(figsize=(10, 6))
+    
+    # creating the bar plot
+    plt.bar(list(df['categories']), list(df['values']), color ='#7400B8', width = 0.4)
+    plt.tick_params(axis='x', labelsize=8)
+    plt.tick_params(axis='y', labelsize=8)
+    plt.xticks(rotation='vertical')
+    plt.tight_layout()
+    plt.autoscale()
+    
+    plt.xlabel("Categories")
+    plt.ylabel("Ratio of requests blocked")
+    plt.title("Stage 3: Blocks per Category")
+    plt.show()
+
+
+
+# analyse_categories()
+get_proportion_graph()

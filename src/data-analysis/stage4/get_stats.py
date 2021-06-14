@@ -21,6 +21,8 @@ subpage_blocks = 'analysis/stage4/individual/subpage-blocks.csv'
 subpage_stats_path = 'analysis/stage4/stats/subpage-analysis.csv'
 chi_squared_subpages_path = 'analysis/stage4/stats/chi-squared-subpages.txt'
 two_sample_proportion_subpages_path = 'analysis/stage4/stats/two-sample-proportion-subpages.txt'
+categories_path = 'analysis/stage4/categories/stage4-categories-analysis.csv'
+chi_squared_categories_path = 'analysis/stage4/stats/chi-squared-categories.txt'
 
 # ID,Domain,Mullvad Response Domain,Control Response Domain,Mullvad Status Code,Control Status Code,Mullvad Error,Control Error,PHash Difference
 
@@ -483,6 +485,45 @@ def two_sample_proportion_subpages():
         file.write('Independent (H0 holds true)' + '\n')
 
 
+def chi_squared_categories():
+
+    # prep file writer
+    file = open(chi_squared_categories_path,"w")
+    file.write('Test if any category blocks more than others.\n')
+    file.write('H0: independently distributed.\n')
+    file.write('H1: dependently distributed.\n')
+    file.write('Alpha value set at 0.05\n')
+    file.write('\n \n')
+
+    # define data table
+    data = []
+
+    categories_df = pd.read_csv(categories_path)
+
+    for i in range(65):
+        row_df = categories_df.iloc[i]
+        if row_df['Blocked'] == 0:
+            continue
+        row = []
+        row.append(row_df['Blocked'])
+        row.append(row_df['Other'])
+        data.append(row)
+
+    chi2, p, dof, expected = chi2_contingency(data)
+  
+    # interpret p-value
+    alpha = 0.05
+    file.write("Categories chi2 value is " + ("%.3f" % chi2) + '\n')
+    file.write("Categories p value is " + ("%.3f" % p) + '\n')
+    file.write("Categories degrees of freedom: " + str(dof) + '\n')
+    file.write("Categories expected frequencies table:" + '\n')
+    file.write(str(expected) + '\n')
+    if p <= alpha:
+        file.write('Dependent (reject H0)' + '\n')
+    else:
+        file.write('Independent (H0 holds true)' + '\n')
+
+
 
 
 # get_stats_individual()
@@ -494,4 +535,5 @@ def two_sample_proportion_subpages():
 # two_sample_proportion_unsure_check()
 # two_sample_proportion_blocks()
 # chi_squared_subpages()
-two_sample_proportion_subpages()
+# two_sample_proportion_subpages()
+# chi_squared_categories()
