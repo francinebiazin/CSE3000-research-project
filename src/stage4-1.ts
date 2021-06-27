@@ -16,7 +16,6 @@ const numberDomains = 1000
 const browserLimit = 300
 const requestRetries = 3
 const timeouts = [20000, 30000, 35000, 40000]
-// const clearoutLimit = 10
 const csvDir = 'data/stage4/csvs/' + fullDate
 
 // variables
@@ -152,7 +151,6 @@ async function runBrowser() {
               Array.from(document.querySelectorAll("a")).map(anchor => anchor.href)
             )
             links = hrefs.filter(link => (link.includes(domains[j] + '/') && link !== page.url() && link !== (page.url() + '/#')))
-            // links.map(link => console.log(link))
           }
           await saveData(startTime, 0, i, completeDomain, page.url(), links.length, ipAddress, statusCode, 'none')
           break
@@ -204,12 +202,10 @@ async function runBrowser() {
           index++
         }
       }
-      // clear cache & cookies every clearoutLimit requests
+      // clear cache & cookies
       client = await page.target().createCDPSession()
       await client.send('Network.clearBrowserCookies')
       await client.send('Network.clearBrowserCache')
-      // await page.waitForTimeout(1000)
-      // page.removeAllListeners()
       await page.close()
     }
 

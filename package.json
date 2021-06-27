@@ -7,7 +7,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
-    "start": "node ./dist/index.js"
+    "stage3": "node ./dist/stage3.js",
+    "stage4": "node ./dist/stage4.js"
   },
   "files": [
     "bin",
@@ -19,7 +20,7 @@
     "url": "git+https://github.com/francinebiazin/CSE3000-research-project.git"
   },
   "author": "Francine Biazin do Nascimento",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/francinebiazin/CSE3000-research-project/issues"
   },

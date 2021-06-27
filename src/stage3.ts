@@ -191,7 +191,6 @@ async function runBrowser() {
         await client.send('Network.clearBrowserCookies');
         await client.send('Network.clearBrowserCache');
       }
-      // await page.waitForTimeout(1000)
       await page.close()
     }
 
